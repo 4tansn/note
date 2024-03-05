@@ -1,1 +1,29 @@
+apply plugin: 'java'
+apply plugin: 'maven'
 
+// Maven publication settings
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
+// Jar task configuration
+jar {
+    manifest {
+        attributes 'Main-Class': 'your.main.Class'
+    }
+}
+
+// Source Jar task configuration
+task sourceJar(type: Jar) {
+    from sourceSets.main.allSource
+    classifier = 'sources'
+}
+
+// Task to generate MD5 hash
+task generateMd5(type: Exec) {
+    commandLine 'md5sum', 'yourJarFile.jar', 'yourPomFile.pom', 'yourSourceJarFile-sources.jar'
+}
