@@ -1,29 +1,12 @@
-apply plugin: 'java'
-apply plugin: 'maven'
-
-// Maven publication settings
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-        }
-    }
+tasks.withType(JavaCompile) {
+    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+    options.fork = true
+    options.forkOptions.executable = 'javac'
+    options.encoding = 'UTF-8'
+    options.incremental = true
 }
 
-// Jar task configuration
-jar {
-    manifest {
-        attributes 'Main-Class': 'your.main.Class'
-    }
-}
-
-// Source Jar task configuration
-task sourceJar(type: Jar) {
-    from sourceSets.main.allSource
-    classifier = 'sources'
-}
-
-// Task to generate MD5 hash
-task generateMd5(type: Exec) {
-    commandLine 'md5sum', 'yourJarFile.jar', 'yourPomFile.pom', 'yourSourceJarFile-sources.jar'
+tasks.withType(Test) {
+    maxParallelForks = 2
+    forkEvery = 50
 }
