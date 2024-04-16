@@ -1,4 +1,28 @@
-As I am planning to relocate to Pune in the May, one of my parents will relocate with me to support me in initial months. During my preliminary discussions with various brokers, I have been surprised by the unexpectedly high rental costs and security deposits in the area. 
-Furthermore, I would like to draw your attention to the fact that my current annual salary of 17.43 lakh places me within the BA3 salary level. 
-Reflecting on my initial offer upon joining Barclays two years ago, with an annual compensation of 16.2 lakh, I note that there has been minimal growth in my salary since then, despite my continued dedication and performance.
-Considering these factors, along with the prevailing salary rates in the market and my professional qualifications, I kindly request that you consider a revision to my current salary to better reflect my contributions and the changing circumstances.
+import requests
+import datetime
+
+# Function to make API request and log response
+def make_api_request(api_url, log_file):
+    # Make API request
+    response = requests.get(api_url)
+    
+    # Log response and timestamp to file
+    with open(log_file, 'a') as file:
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        file.write(f"{timestamp} - API: {api_url}, Response: {response.text}\n")
+
+# List of APIs to make requests to
+apis = [
+    "https://api.example.com/endpoint1",
+    "https://api.example.com/endpoint2",
+    "https://api.example.com/endpoint3",
+    "https://api.example.com/endpoint4",
+    "https://api.example.com/endpoint5"
+]
+
+# File to log responses
+log_file = "api_responses.log"
+
+# Make API requests and log responses
+for api_url in apis:
+    make_api_request(api_url, log_file)
