@@ -1,28 +1,26 @@
-import requests
-import datetime
+import re
 
-# Function to make API request and log response
-def make_api_request(api_url, log_file):
-    # Make API request
-    response = requests.get(api_url)
-    
-    # Log response and timestamp to file
-    with open(log_file, 'a') as file:
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        file.write(f"{timestamp} - API: {api_url}, Response: {response.text}\n")
+def extract_jar_names(file_path):
+    # Regular expression to match jar names
+    jar_regex = re.compile(r'(?<=\:)(.*?)(?=\:)')
 
-# List of APIs to make requests to
-apis = [
-    "https://api.example.com/endpoint1",
-    "https://api.example.com/endpoint2",
-    "https://api.example.com/endpoint3",
-    "https://api.example.com/endpoint4",
-    "https://api.example.com/endpoint5"
-]
+    jar_names = set()  # Using a set to avoid duplicates
 
-# File to log responses
-log_file = "api_responses.log"
+    # Open the dependencies.txt file
+    with open(file_path, 'r') as file:
+        # Read each line in the file
+        for line in file:
+            # Find all matches of jar names in the line
+            matches = jar_regex.findall(line)
+            # Add found jar names to the set
+            jar_names.update(matches)
 
-# Make API requests and log responses
-for api_url in apis:
-    make_api_request(api_url, log_file)
+    return jar_names
+
+# Example usage
+dependencies_file_path = 'dependencies.txt'
+jar_names = extract_jar_names(dependencies_file_path)
+
+# Print the extracted jar names
+for jar_name in jar_names:
+    print(jar_name)
