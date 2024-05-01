@@ -1,26 +1,12 @@
-import re
+Dear 
+I hope this email finds you well. I am writing to bring to your attention some concerns I have regarding my current work situation and to request a transfer to another team within Barclays.
+Since joining my current team, I have encountered several challenges that have made it increasingly difficult for me to perform effectively. My manager's approach to setting deadlines has been unrealistic, often leaving me feeling overwhelmed and pressured to deliver work within unattainable timeframes. Furthermore, despite my best efforts, I have not received the necessary support or guidance from my manager when facing these challenges. Instead, I have been met with repeated verbal warnings, which have only added to my stress and anxiety. Yesterday I received a verbal warning that my planned leaves  of later weeks will be cancelled  if I am not able to complete testing tasks in 2 days.
+In addition to the unrealistic deadlines, I have found that the type and scope of work assigned to me do not align with my skills and expertise. Much of the work I have been tasked with, such as testing and mundane tasks like populating Excel sheets and checking URLs, falls outside the scope of my role as a developer. This has led to a sense of lack of fulfillment in my work. And again this type of work is not in alignment with the role description shared before.
+Having previously worked with 3 supportive teams ( 1 during internship and 2 in previous rotations ) during my time at Barclays, I have experienced firsthand the positive impact that a collaborative and encouraging work environment can have on one's professional development. 
+In my first team, I received recognition from then manager, Harish Shetty, two clients, and a teammate, reflecting positively on my performance and dedication to our collective goals. Upon transitioning to my second team, I received reconistion from 1 client from “Run the Bank” .Additionally, I had the honor of presenting a session on the "Future of Banking" at the Managing Director level. This presentation was selected for its relevance and impact, affording me the opportunity to present this before our BUK leadership and ExCo during their recent visit to Pune. I also recicived recognistion at Director Level() for the same. Additionally, I have been humbled by the proactive efforts of my team lead, Kiran Patil, and my then manager, Manpreet Kaur Sasan. Both Kiran and Manpreet have reached out to HR on multiple occasions to advocate for my retention within the team. Also during my internship in Wealth Processing team in Barclays in 2021, I received huge appreciation from team lead , Manish Agrawal and as a result I recived pre placement offer to join Barclays.
+ However, the challenges I am facing in my current team have made it clear to me that a change is necessary for me to thrive and contribute effectively.
+I would like to highlight that even before joining this team, my predecessor and cohort, GVR Karthik ,conveyed me about unrealsistic deadlines. Also during rotation to this team, current line manager, Dheeraj Verma, warned me about the extreme workload in the team.
+Given these circumstances, I kindly request your assistance in facilitating a transfer to another team within Barclays where I can continue to grow and contribute positively to the organization. I am confident that a change in environment will allow me to leverage my skills and capabilities more effectively, while also aligning with the values and culture of Barclays that I have come to admire.
+Thank you for your attention to this matter. I am available to discuss this further at your earliest convenience.
+Warm regards,
 
-def extract_jar_names(file_path):
-    # Regular expression to match jar names
-    jar_regex = re.compile(r'(?<=\:)(.*?)(?=\:)')
-
-    jar_names = set()  # Using a set to avoid duplicates
-
-    # Open the dependencies.txt file
-    with open(file_path, 'r') as file:
-        # Read each line in the file
-        for line in file:
-            # Find all matches of jar names in the line
-            matches = jar_regex.findall(line)
-            # Add found jar names to the set
-            jar_names.update(matches)
-
-    return jar_names
-
-# Example usage
-dependencies_file_path = 'dependencies.txt'
-jar_names = extract_jar_names(dependencies_file_path)
-
-# Print the extracted jar names
-for jar_name in jar_names:
-    print(jar_name)
