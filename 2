@@ -1,168 +1,50 @@
-1. Question: In the SRE world, we use a famous terminology called “toil.” What strategies do you use to identify and reduce toil? Can you share a scenario where you successfully automated a repetitive task to improve efficiency?
-Response:
+import requests
+from bs4 import BeautifulSoup
 
-The candidate demonstrated a strong understanding of toil and provided excellent strategies for identifying and reducing it. They emphasized the importance of tracking repetitive, manual tasks and used data to prioritize automation efforts. The candidate shared a relevant and detailed scenario where they automated a recurring task using scripting and orchestration tools, which significantly improved efficiency and reduced operational overhead. Their approach to toil management aligns with industry best practices.
+# Confluence API details
+base_url = "https://<confluence-domain>.com/wiki"
+api_url = f"{base_url}/rest/api/content"
+page_id = "<your-confluence-page-id>"
+auth = ('<username>', '<api_token>')  # For basic auth with API token
 
-Feedback Rating:
+def get_confluence_page(page_id):
+    # Get page content from Confluence
+    url = f"{api_url}/{page_id}?expand=body.view"
+    response = requests.get(url, auth=auth)
+    if response.status_code == 200:
+        page_data = response.json()
+        page_html = page_data['body']['view']['value']
+        return page_html
+    else:
+        print("Failed to fetch the page:", response.status_code)
+        return None
 
-Understanding of toil: ★★★★★
-Strategies for identifying toil: ★★★★★
-Automation experience and scenario: ★★★★★
-Impact on efficiency and operations: ★★★★★
-2. Question: Describe a time when you faced a major production outage. How did you manage the situation, and what steps did you take to restore the system?
-Response:
+# Parse the Confluence page HTML
+def parse_page_content(html_content):
+    soup = BeautifulSoup(html_content, 'html.parser')
+    text_content = soup.get_text(separator="\n")
+    return text_content
 
-The candidate confidently described a high-pressure situation involving a major production outage. They were proactive in triaging the issue by quickly gathering logs, engaging the appropriate stakeholders, and using monitoring tools to identify the root cause. Their clear communication with both technical and non-technical teams helped ensure timely updates and collaborative problem-solving. The candidate followed a structured approach to restore services, including implementing a temporary fix followed by a permanent resolution. They also highlighted the importance of conducting a post-incident review to prevent future occurrences.
+page_html = get_confluence_page(page_id)
+if page_html:
+    page_text = parse_page_content(page_html)
+    print(page_text)
+import openai
 
-Feedback Rating:
+# Initialize OpenAI API key
+openai.api_key = "<your-openai-api-key>"
 
-Response to production outage: ★★★★★
-Problem identification and resolution: ★★★★★
-Communication and collaboration: ★★★★★
-Post-incident review and prevention: ★★★★★
-3. Question: How do you approach debugging performance degradation in a distributed system with multiple services?
-Response:
+# Query the LLM model
+def ask_llm(content, question):
+    response = openai.Completion.create(
+        engine="text-davinci-003",  # Or another model like gpt-3.5-turbo
+        prompt=f"{content}\n\nQuestion: {question}",
+        max_tokens=150,
+        temperature=0.5
+    )
+    return response.choices[0].text.strip()
 
-The candidate demonstrated strong debugging skills and a solid understanding of distributed systems. They outlined a systematic approach to diagnosing performance degradation, including checking system metrics, identifying bottlenecks in service-to-service communication, and analyzing logs across the stack. They also mentioned the use of APM (Application Performance Monitoring) tools and tracing frameworks like OpenTelemetry to pinpoint the root cause of performance issues. Their approach was thorough, with a clear focus on isolating the problem areas and applying targeted fixes.
-
-Feedback Rating:
-
-Understanding of performance degradation in distributed systems: ★★★★★
-Use of monitoring and debugging tools: ★★★★★
-Methodical approach to troubleshooting: ★★★★★
-Experience with distributed system debugging: ★★★★★
-Overall Evaluation:
-The candidate provided well-thought-out, comprehensive answers to all the questions, demonstrating a strong understanding of core SRE concepts, including toil reduction, handling production outages, and debugging distributed systems. Their experience in automating tasks and managing high-stakes situations under pressure was impressive, and they communicated their solutions effectively. Based on their responses, the candidate is well-suited for an SRE role with strong problem-solving and operational skills.
-
-Overall Rating: ★★★★★
-
-Additional Comments:
-The candidate showed a deep knowledge of SRE practices and shared relevant, real-world experiences that illustrate their ability to manage complex systems and ensure operational efficiency. Highly recommended for further consideration.
-
-
-
-
-
-
-
-You said:
-Have you ever faced a situation where monitoring tools failed during a critical incident? How did you handle it and ensure minimal downtime?
-ChatGPT said:
-ChatGPT
-Interview Feedback Form
-Candidate Name:
-Position Applied For:
-Interviewer Name:
-Date of Interview:
-
-4. Question: Have you ever faced a situation where monitoring tools failed during a critical incident? How did you handle it and ensure minimal downtime?
-Response:
-
-The candidate shared a compelling scenario where the monitoring tools became unresponsive during a critical incident. They demonstrated the ability to remain calm and methodical under pressure. Their approach involved leveraging alternative data sources, such as logs, to manually assess the situation and troubleshoot the issue. The candidate also utilized runbooks and past incident knowledge to guide their decision-making process and ensure a rapid response. They effectively coordinated with their team to implement temporary fixes, ensuring service continuity while restoring the monitoring tools. After resolving the incident, the candidate worked on strengthening monitoring redundancy to prevent future failures.
-
-Feedback Rating:
-
-Response to monitoring tool failure: ★★★★★
-Problem-solving under pressure: ★★★★★
-Use of alternative methods (logs, runbooks, team collaboration): ★★★★★
-Proactive follow-up to prevent recurrence: ★★★★★
-Overall Evaluation:
-The candidate's response demonstrated excellent problem-solving skills in a high-pressure scenario. Their ability to think on their feet, use alternative resources when key tools were unavailable, and ensure minimal downtime during the incident reflects strong operational resilience and leadership. They also showed a commitment to continuous improvement by addressing the root cause of the monitoring failure.
-
-Overall Rating: ★★★★★
-
-Additional Comments:
-The candidate's handling of a monitoring tool failure during a critical incident was impressive. They maintained operational efficiency, showcased quick thinking, and implemented post-incident improvements. Strongly recommended for SRE positions that require operational reliability and technical expertise.
-
-
-
-
-
-
-
-You said:
-also I asked 2 sum competitive programing question
-ChatGPT said:
-ChatGPT
-Interview Feedback Form
-Candidate Name:
-Position Applied For:
-Interviewer Name:
-Date of Interview:
-
-5. Question: Competitive Programming Question 1 (2 Sum Problem)
-Response:
-
-The candidate was able to quickly understand the 2 Sum problem and provided a correct solution. They initially suggested a brute-force approach and then optimized it by using a hash map to achieve O(n) time complexity. The candidate effectively explained the logic behind their approach, demonstrating a good understanding of data structures and algorithms. They handled edge cases such as duplicate numbers and invalid input gracefully.
-
-Feedback Rating:
-
-Problem understanding: ★★★★★
-Efficiency of solution: ★★★★★
-Algorithmic knowledge: ★★★★★
-Handling edge cases: ★★★★★
-6. Question: Competitive Programming Question 2 (2 Sum Variant or Follow-up)
-Response:
-
-For the second variant of the 2 Sum problem, the candidate was able to apply a similar optimized approach but tailored it to fit the new constraints. They analyzed the problem carefully and adjusted their solution based on the specific requirements, demonstrating flexibility in problem-solving. They also discussed the trade-offs between different solutions, such as using sorting versus hashing, which showed a deep understanding of time-space complexity.
-
-Feedback Rating:
-
-Adaptability to problem variant: ★★★★★
-Solution optimization: ★★★★★
-Time-space complexity analysis: ★★★★★
-Logical explanation: ★★★★★
-Overall Evaluation:
-The candidate performed exceptionally well on both competitive programming questions. They showed a strong grasp of algorithms, optimization techniques, and problem-solving skills. Their ability to explain their thought process and handle variations in the problem further highlighted their programming proficiency.
-
-Overall Rating: ★★★★★
-
-Additional Comments:
-The candidate excelled in solving both competitive programming questions and demonstrated an ability to optimize solutions efficiently. Their solid understanding of data structures and algorithms makes them a strong candidate for any coding-heavy or problem-solving roles. Highly recommended for further consideration.
-
-
-
-
-
-
-
-You said:
-How can you ensure no downtime during software upgrade
-ChatGPT said:
-ChatGPT
-Interview Feedback Form
-Candidate Name:
-Position Applied For:
-Interviewer Name:
-Date of Interview:
-
-7. Question: How can you ensure no downtime during a software upgrade?
-Response:
-
-The candidate provided a comprehensive answer that demonstrated a clear understanding of strategies to ensure zero downtime during software upgrades. They discussed the following key techniques:
-
-Blue-Green Deployment: The candidate explained how creating two environments (blue and green) allows traffic to be routed to the new (green) environment once it has been tested, ensuring no downtime during the transition.
-
-Canary Releases: They also highlighted how deploying new features to a small subset of users (a "canary") allows for monitoring and validation before rolling it out to the entire system, minimizing risk.
-
-Rolling Deployments: The candidate described how incrementally upgrading instances in a cluster while keeping some instances running the old version ensures that services remain available during the upgrade process.
-
-Database Migrations: The candidate discussed strategies for handling database migrations during upgrades, including backward-compatible schema changes and using feature flags to decouple application logic from the database layer.
-
-Monitoring and Rollback Mechanisms: They stressed the importance of having robust monitoring in place during the upgrade and ensuring that a quick rollback mechanism is available if any issues are detected.
-
-Overall, the candidate demonstrated a deep understanding of modern deployment practices and how to ensure high availability during critical software upgrades.
-
-Feedback Rating:
-
-Understanding of zero-downtime deployment strategies: ★★★★★
-Explanation of blue-green and canary deployments: ★★★★★
-Database migration handling: ★★★★★
-Emphasis on monitoring and rollback: ★★★★★
-Overall Evaluation:
-The candidate displayed a thorough understanding of the techniques required to achieve zero downtime during software upgrades. Their knowledge of blue-green, canary, and rolling deployments, combined with their consideration of database migrations and monitoring, shows strong expertise in reliable software delivery.
-
-Overall Rating: ★★★★★
-
-Additional Comments:
-The candidate provided a well-rounded and technical answer to this question, demonstrating experience in handling live production systems. Their knowledge of ensuring availability during upgrades reflects their strong background in operational reliability. Highly recommended for SRE or similar roles focused on software delivery and uptime.
+# Example of querying insights from the Confluence content
+question = "What are the key points mentioned in the page?"
+response = ask_llm(page_text, question)
+print("Response from LLM:", response)
