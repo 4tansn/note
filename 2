@@ -1,56 +1,69 @@
-import requests
-from bs4 import BeautifulSoup
+npx create-react-app material-ui-chatbot
+cd material-ui-chatbot
+npm install @mui/material @emotion/react @emotion/styled @mui/icons-material
+import React, { useState } from 'react';
+import { TextField, Button, Card, CardContent, Typography } from '@mui/material';
 
-# Set your Confluence URL and login details
-url = "https://your-confluence-instance.com/confluence-page"
-login_url = "https://your-confluence-instance.com/dologin.action"
+const Chatbot = () => {
+  const [messages, setMessages] = useState([
+    { text: 'Hello! How can I help you today?', sender: 'bot' }
+  ]);
+  const [input, setInput] = useState('');
 
-# Your Confluence credentials
-username = "your-username"
-password = "your-password"
+  const handleSend = () => {
+    if (input.trim()) {
+      setMessages([...messages, { text: input, sender: 'user' }]);
+      setInput('');
+      setTimeout(() => {
+        setMessages(prev => [...prev, { text: 'Let me get back to you on that!', sender: 'bot' }]);
+      }, 1000);
+    }
+  };
 
-# Start a session
-session = requests.Session()
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f5f5' }}>
+      <Card style={{ width: '400px', padding: '20px' }}>
+        <CardContent>
+          <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '20px' }}>
+            {messages.map((msg, index) => (
+              <Typography 
+                key={index} 
+                style={{ 
+                  textAlign: msg.sender === 'user' ? 'right' : 'left', 
+                  backgroundColor: msg.sender === 'user' ? '#1976d2' : '#e0e0e0', 
+                  color: msg.sender === 'user' ? '#fff' : '#000',
+                  padding: '8px', 
+                  borderRadius: '10px', 
+                  marginBottom: '10px',
+                  display: 'inline-block'
+                }}
+              >
+                {msg.text}
+              </Typography>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <TextField 
+              variant="outlined" 
+              fullWidth 
+              placeholder="Type your message..." 
+              value={input} 
+              onChange={e => setInput(e.target.value)} 
+              onKeyDown={e => e.key === 'Enter' && handleSend()}
+            />
+            <Button 
+              variant="contained" 
+              color="primary" 
+              onClick={handleSend} 
+              style={{ marginLeft: '10px' }}
+            >
+              Send
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
-# Login payload
-login_payload = {
-    'os_username': username,
-    'os_password': password,
-    'os_destination': '',
-    'login': 'Log In'
-}
-
-# Perform login
-login_response = session.post(login_url, data=login_payload)
-
-if login_response.status_code == 200:
-    print("Login successful")
-else:
-    print("Login failed")
-
-# Request the page after login
-response = session.get(url)
-
-if response.status_code == 200:
-    # Parse the page content with BeautifulSoup
-    soup = BeautifulSoup(response.content, 'html.parser')
-    
-    # Example: extract page title
-    title = soup.find('title').get_text()
-    print(f"Page Title: {title}")
-    
-    # Example: extract all headings
-    headings = soup.find_all(['h1', 'h2', 'h3'])
-    for heading in headings:
-        print(f"{heading.name}: {heading.get_text()}")
-    
-    # You can extract any specific content you need based on the HTML structure of the Confluence page
-    # Example: extracting paragraphs
-    paragraphs = soup.find_all('p')
-    for paragraph in paragraphs:
-        print(paragraph.get_text())
-else:
-    print("Failed to retrieve the page")
-
-# Close the session after you're done
-session.close()
+export default Chatbot;
