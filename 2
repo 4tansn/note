@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { TextField, Button, Card, CardContent, Typography } from '@mui/material';
 
 const Chatbot = () => {
   const [messages, setMessages] = useState([
@@ -20,39 +18,51 @@ const Chatbot = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100 p-4">
-      <Card className="w-full max-w-md shadow-lg rounded-2xl">
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f5f5' }}>
+      <Card style={{ width: '400px', padding: '20px' }}>
         <CardContent>
-          <div className="h-80 overflow-y-auto mb-4 p-4 bg-white rounded-lg">
+          <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '20px' }}>
             {messages.map((msg, index) => (
               <div
                 key={index}
-                className={`mb-2 flex ${
-                  msg.sender === 'user' ? 'justify-end' : 'justify-start'
-                }`}
+                style={{
+                  display: 'flex',
+                  justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', // Align user messages right and bot messages left
+                  marginBottom: '10px'
+                }}
               >
-                <span
-                  className={`inline-block p-2 rounded-lg ${
-                    msg.sender === 'user'
-                      ? 'bg-blue-500 text-white self-end'
-                      : 'bg-gray-200 text-black self-start'
-                  }`}
-                  style={{ maxWidth: '75%' }} // Limit message width for better readability
+                <Typography
+                  style={{
+                    backgroundColor: msg.sender === 'user' ? '#1976d2' : '#e0e0e0',
+                    color: msg.sender === 'user' ? '#fff' : '#000',
+                    padding: '8px',
+                    borderRadius: '10px',
+                    maxWidth: '60%', // Adjust the message width
+                    wordWrap: 'break-word'
+                  }}
                 >
                   {msg.text}
-                </span>
+                </Typography>
               </div>
             ))}
           </div>
-          <div className="flex">
-            <Input
-              className="flex-1 mr-2"
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <TextField
+              variant="outlined"
+              fullWidth
               placeholder="Type your message..."
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSend()}
             />
-            <Button onClick={handleSend} className="bg-blue-500 text-white">Send</Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSend}
+              style={{ marginLeft: '10px' }}
+            >
+              Send
+            </Button>
           </div>
         </CardContent>
       </Card>
