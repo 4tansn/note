@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Card, CardContent } from '@mui/material';
-import { TextField, Button } from '@mui/material';
+import { TextField, Button, Card, CardContent, Typography } from '@mui/material';
+import axios from 'axios';
 
 const Chatbot = () => {
   const [messages, setMessages] = useState([
@@ -8,40 +8,73 @@ const Chatbot = () => {
   ]);
   const [input, setInput] = useState('');
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (input.trim()) {
+      // Add user message to the chat
       setMessages([...messages, { text: input, sender: 'user' }]);
+
+      // Call Flask API to get the chatbot's response
+      try {
+        const response = await axios.post('http://localhost:5000/chat', {
+          message: input
+        });
+
+        // Add bot response to the chat
+        setMessages(prev => [...prev, { text: response.data.response, sender: 'bot' }]);
+      } catch (error) {
+        console.error('Error communicating with the Flask API', error);
+        setMessages(prev => [...prev, { text: 'Sorry, something went wrong!', sender: 'bot' }]);
+      }
+
+      // Clear the input field
       setInput('');
-      setTimeout(() => {
-        setMessages(prev => [...prev, { text: `You said: ${input}. Let me get back to you!`, sender: 'bot' }]);
-      }, 1000);
     }
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100 p-4">
-      <Card className="flex-grow max-h-full shadow-lg rounded-2xl">
-        <CardContent className="flex flex-col h-full">
-          <div className="flex-grow overflow-y-auto mb-4 p-4 bg-white rounded-lg">
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f5f5' }}>
+      <Card style={{ width: '100%', maxWidth: '800px', height: '80vh', display: 'flex', flexDirection: 'column' }}>
+        <CardContent style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flexGrow: 1, overflowY: 'auto', marginBottom: '20px', padding: '10px', backgroundColor: '#ffffff', borderRadius: '10px' }}>
             {messages.map((msg, index) => (
-              <div key={index} className={`mb-2 ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
-                <span className={`inline-block p-2 rounded-lg ${msg.sender === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black'}`}>
+              <div
+                key={index}
+                style={{
+                  display: 'flex',
+                  justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', // Align user messages right and bot messages left
+                  marginBottom: '10px'
+                }}
+              >
+                <Typography
+                  style={{
+                    backgroundColor: msg.sender === 'user' ? '#1976d2' : '#e0e0e0',
+                    color: msg.sender === 'user' ? '#fff' : '#000',
+                    padding: '8px',
+                    borderRadius: '10px',
+                    maxWidth: '60%', // Adjust the message width
+                    wordWrap: 'break-word'
+                  }}
+                >
                   {msg.text}
-                </span>
+                </Typography>
               </div>
             ))}
           </div>
-          <div className="flex">
+          <div style={{ display: 'flex', alignItems: 'center' }}>
             <TextField
-              className="flex-1 mr-2"
+              variant="outlined"
+              fullWidth
               placeholder="Type your message..."
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSend()}
-              variant="outlined"
-              fullWidth
             />
-            <Button onClick={handleSend} variant="contained" color="primary">
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSend}
+              style={{ marginLeft: '10px' }}
+            >
               Send
             </Button>
           </div>
@@ -52,7 +85,3 @@ const Chatbot = () => {
 };
 
 export default Chatbot;
-
-
-
-npm install @mui/material @emotion/react @emotion/styled
