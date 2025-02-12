@@ -1,13 +1,103 @@
-Clarification and Request for Partial Reimbursement
+import React, { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
-Dear [Insurance Company Representative's Name],
+const Chatbot = () => {
+  const [messages, setMessages] = useState([
+    { text: 'Hello! How can I help you today?', sender: 'bot' }
+  ]);
+  const [input, setInput] = useState('');
 
-I am writing in response to the recent deficiency letter dated 17th September 2024, which raised concerns regarding the "duplicate" keyword on the hospital bill.
+  const handleSend = async () => {
+    if (input.trim()) {
+      // Add user message to the chat
+      setMessages([...messages, { text: input, sender: 'user' }]);
 
-When I submitted the report in person on 13th August 2024 at your Bhubaneswar branch, I informed Mr. Ashok Dash about the reason behind the "duplicate" keyword on the bill. Initially, my address was incorrect on the original bill. The hospital updated the address and issued a new bill with the correct details. The previous bill with the incorrect address was taken back by the hospital, and the new bill, although marked as "duplicate," is in fact the original bill reflecting the correct address after the update. I explained this situation to Mr. Ashok Dash during the submission.
+      // Send the message to the backend
+      const response = await fetch('http://localhost:5000/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: input }),
+      });
 
-After the first deficiency letter was generated on 27th August 2024, I had to collect additional documents, including indoor case papers and hematology reports signed by the MD, and I submitted these to the Bhubaneswar office as well. Please note that my job location is in Pune, and frequent travel to Bhubaneswar is not feasible for me.
+      const data = await response.json();
+      
+      // Add bot response to the chat
+      setMessages(prev => [...prev, { text: data.response, sender: 'bot' }]);
+      setInput('');
+    }
+  };
 
-Now, with this new deficiency letter issued on 17th September 2024—over a month after I submitted the bills—the concern regarding the word "duplicate" on the bill has been raised again.
+  return (
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-100 p-4">
+      <Card className="w-full max-w-md shadow-lg rounded-2xl">
+        <CardContent>
+          <div className="h-80 overflow-y-auto mb-4 p-4 bg-white rounded-lg">
+            {messages.map((msg, index) => (
+              <div key={index} className={`mb-2 ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
+                <span className={`inline-block p-2 rounded-lg ${msg.sender === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black'}`}>{msg.text}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex">
+            <Input 
+              className="flex-1 mr-2" 
+              placeholder="Type your message..." 
+              value={input} 
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSend()} 
+            />
+            <Button onClick={handleSend} className="bg-blue-500 text-white">Send</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
-As mentioned, the original bills were taken back by the hospital, and the corrected bills I submitted were provided by the hospital. Since this is a network hospital, I kindly request you verify this directly with them.
+export default Chatbot;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app)  # To allow requests from your React frontend
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    user_message = request.json.get('message')
+    
+    # Simple bot logic: respond based on user input
+    if "hello" in user_message.lower():
+        response = "Hi there! How can I assist you?"
+    elif "bye" in user_message.lower():
+        response = "Goodbye! Have a great day!"
+    else:
+        response = "I'm not sure how to respond to that yet."
+
+    return jsonify({"response": response})
+
+if __name__ == '__main__':
+    app.run(debug=True)
