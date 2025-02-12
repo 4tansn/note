@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TextField, Button, Card, CardContent, Typography } from '@mui/material';
+import axios from 'axios'; // Import axios for making API calls
 
 const Chatbot = () => {
   const [messages, setMessages] = useState([
@@ -7,13 +8,26 @@ const Chatbot = () => {
   ]);
   const [input, setInput] = useState('');
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (input.trim()) {
+      // Add user message to the chat
       setMessages([...messages, { text: input, sender: 'user' }]);
+
+      // Call Flask API to get the chatbot's response
+      try {
+        const response = await axios.post('http://localhost:5000/chat', {
+          message: input
+        });
+
+        // Add bot response to the chat
+        setMessages(prev => [...prev, { text: response.data.response, sender: 'bot' }]);
+      } catch (error) {
+        console.error('Error communicating with the Flask API', error);
+        setMessages(prev => [...prev, { text: 'Sorry, something went wrong!', sender: 'bot' }]);
+      }
+
+      // Clear the input field
       setInput('');
-      setTimeout(() => {
-        setMessages(prev => [...prev, { text: 'Let me get back to you on that!', sender: 'bot' }]);
-      }, 1000);
     }
   };
 
