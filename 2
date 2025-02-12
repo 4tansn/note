@@ -34,8 +34,8 @@ const Chatbot = () => {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f5f5' }}>
       <Card style={{ width: '100%', maxWidth: '800px', height: '80vh', display: 'flex', flexDirection: 'column' }}>
-        <CardContent style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flexGrow: 1, overflowY: 'auto', marginBottom: '20px', padding: '10px', backgroundColor: '#ffffff', borderRadius: '10px' }}>
+        <CardContent style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', padding: '0' }}>
+          <div style={{ flexGrow: 1, overflowY: 'auto', padding: '10px', backgroundColor: '#ffffff', borderRadius: '10px' }}>
             {messages.map((msg, index) => (
               <div
                 key={index}
@@ -60,7 +60,7 @@ const Chatbot = () => {
               </div>
             ))}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '10px' }}>
             <TextField
               variant="outlined"
               fullWidth
