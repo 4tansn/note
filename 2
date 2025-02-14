@@ -1,87 +1,42 @@
-import React, { useState } from 'react';
-import { TextField, Button, Card, CardContent, Typography } from '@mui/material';
-import axios from 'axios';
+from sentence_transformers import SentenceTransformer
+from langchain.vectorstores import FAISS
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.embeddings.base import Embeddings
 
-const Chatbot = () => {
-  const [messages, setMessages] = useState([
-    { text: 'Hello! How can I help you today?', sender: 'bot' }
-  ]);
-  const [input, setInput] = useState('');
+# Custom Embedding class for Sentence Transformers
+class SentenceTransformerEmbeddings(Embeddings):
+    def __init__(self, model_name='all-MiniLM-L6-v2'):
+        self.model = SentenceTransformer(model_name)
 
-  const handleSend = async () => {
-    if (input.trim()) {
-      // Add user message to the chat
-      setMessages([...messages, { text: input, sender: 'user' }]);
+    def embed_documents(self, documents):
+        return self.model.encode(documents, convert_to_tensor=True).cpu().numpy()
 
-      // Call Flask API to get the chatbot's response
-      try {
-        const response = await axios.post('http://localhost:5000/chat', {
-          message: input
-        });
+    def embed_query(self, query):
+        return self.model.encode([query], convert_to_tensor=True).cpu().numpy()[0]
 
-        // Add bot response to the chat
-        setMessages(prev => [...prev, { text: response.data.response, sender: 'bot' }]);
-      } catch (error) {
-        console.error('Error communicating with the Flask API', error);
-        setMessages(prev => [...prev, { text: 'Sorry, something went wrong!', sender: 'bot' }]);
-      }
+# Initialize Sentence Transformer Embeddings
+embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
 
-      // Clear the input field
-      setInput('');
-    }
-  };
+# Function to vectorize text data
+def vectorize_text(text_data, embeddings):
+    text_splitter = CharacterTextSplitter(separator="\n", chunk_size=1000, chunk_overlap=0)
+    texts = text_splitter.split_text(text_data)
+    return embeddings.embed_documents(texts)
 
-  return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f5f5' }}>
-      <Card style={{ width: '100%', maxWidth: '800px', height: '80vh', display: 'flex', flexDirection: 'column' }}>
-        <CardContent style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', padding: '0' }}>
-          <div style={{ flexGrow: 1, overflowY: 'auto', padding: '10px', backgroundColor: '#ffffff', borderRadius: '10px' }}>
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                style={{
-                  display: 'flex',
-                  justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', // Align user messages right and bot messages left
-                  marginBottom: '10px'
-                }}
-              >
-                <Typography
-                  style={{
-                    backgroundColor: msg.sender === 'user' ? '#1976d2' : '#e0e0e0',
-                    color: msg.sender === 'user' ? '#fff' : '#000',
-                    padding: '8px',
-                    borderRadius: '10px',
-                    maxWidth: '60%', // Adjust the message width
-                    wordWrap: 'break-word'
-                  }}
-                >
-                  {msg.text}
-                </Typography>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', padding: '10px' }}>
-            <TextField
-              variant="outlined"
-              fullWidth
-              placeholder="Type your message..."
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSend()}
-            />
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleSend}
-              style={{ marginLeft: '10px' }}
-            >
-              Send
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
+# Save vectorized data to local disk using FAISS
+def save_vectors_to_disk(vectors, file_path="vector_data.faiss"):
+    faiss_index = FAISS.from_embeddings(vectors)
+    faiss_index.save_local(file_path)
 
-export default Chatbot;
+# Example usage
+if __name__ == "__main__":
+    # Sample text data (replace this with your scraped Confluence data)
+    all_page_content = "Here is some sample text from a Confluence page."
+
+    # Vectorize the scraped data
+    vectors = vectorize_text(all_page_content, embeddings)
+
+    # Save vectors to disk
+    save_vectors_to_disk(vectors)
+    
+    print("Vectors saved locally.")
