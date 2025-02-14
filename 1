@@ -1,103 +1,93 @@
-import React, { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import os
+import requests
+from langchain import LLMChain, PromptTemplate
+from langchain.vectorstores import FAISS
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.llms import OpenAI
 
-const Chatbot = () => {
-  const [messages, setMessages] = useState([
-    { text: 'Hello! How can I help you today?', sender: 'bot' }
-  ]);
-  const [input, setInput] = useState('');
+# Set environment variables for LLaMA API and OpenAI keys
+os.environ["LLAMA_API_KEY"] = "your_llama_api_key"
+os.environ["OPENAI_API_KEY"] = "your_openai_api_key"
 
-  const handleSend = async () => {
-    if (input.trim()) {
-      // Add user message to the chat
-      setMessages([...messages, { text: input, sender: 'user' }]);
-
-      // Send the message to the backend
-      const response = await fetch('http://localhost:5000/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: input }),
-      });
-
-      const data = await response.json();
-      
-      // Add bot response to the chat
-      setMessages(prev => [...prev, { text: data.response, sender: 'bot' }]);
-      setInput('');
-    }
-  };
-
-  return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100 p-4">
-      <Card className="w-full max-w-md shadow-lg rounded-2xl">
-        <CardContent>
-          <div className="h-80 overflow-y-auto mb-4 p-4 bg-white rounded-lg">
-            {messages.map((msg, index) => (
-              <div key={index} className={`mb-2 ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
-                <span className={`inline-block p-2 rounded-lg ${msg.sender === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black'}`}>{msg.text}</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex">
-            <Input 
-              className="flex-1 mr-2" 
-              placeholder="Type your message..." 
-              value={input} 
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSend()} 
-            />
-            <Button onClick={handleSend} className="bg-blue-500 text-white">Send</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-export default Chatbot;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-
-app = Flask(__name__)
-CORS(app)  # To allow requests from your React frontend
-
-@app.route('/chat', methods=['POST'])
-def chat():
-    user_message = request.json.get('message')
-    
-    # Simple bot logic: respond based on user input
-    if "hello" in user_message.lower():
-        response = "Hi there! How can I assist you?"
-    elif "bye" in user_message.lower():
-        response = "Goodbye! Have a great day!"
+# Function to scrape Confluence page content using Confluence REST API
+def scrape_confluence_page(page_id, base_url, auth):
+    url = f"{base_url}/rest/api/content/{page_id}?expand=body.storage"
+    response = requests.get(url, auth=auth)
+    if response.status_code == 200:
+        page_content = response.json()['body']['storage']['value']
+        return page_content
     else:
-        response = "I'm not sure how to respond to that yet."
+        raise Exception(f"Failed to retrieve page content: {response.status_code}")
 
-    return jsonify({"response": response})
+# Function to vectorize text data
+def vectorize_text(text_data, embeddings):
+    text_splitter = CharacterTextSplitter(separator="\n", chunk_size=1000, chunk_overlap=0)
+    texts = text_splitter.split_text(text_data)
+    return embeddings.embed_text(texts)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# Save vectorized data to local disk
+def save_vectors_to_disk(vectors, file_path="vector_data.faiss"):
+    faiss_index = FAISS.from_embeddings(vectors)
+    faiss_index.save_local(file_path)
+
+# Load vectors from disk
+def load_vectors_from_disk(file_path="vector_data.faiss"):
+    return FAISS.load_local(file_path)
+
+# Query the LLaMA model using Langchain
+def query_llama_model(query, llama_url, vectorstore):
+    similar_docs = vectorstore.similarity_search(query)
+    context = "\n".join([doc.page_content for doc in similar_docs])
+
+    # Define LLaMA API prompt
+    prompt_template = PromptTemplate(
+        input_variables=["context", "query"],
+        template="""
+        You are an assistant with access to Confluence data. Based on the context provided below, 
+        answer the following query:
+        
+        Context: {context}
+        Query: {query}
+        
+        Provide the most relevant answer based on the available data.
+        """
+    )
+    
+    chain = LLMChain(llm=OpenAI(model="llama"), prompt=prompt_template)
+    response = chain.run(context=context, query=query)
+    return response
+
+# Example usage
+if __name__ == "__main__":
+    # Confluence API details
+    base_url = "https://your_confluence_instance.com"
+    auth = ("username", "api_token")
+
+    # Scrape Confluence pages
+    page_ids = ["12345", "67890"]  # Replace with actual page IDs
+    all_page_content = ""
+    
+    for page_id in page_ids:
+        content = scrape_confluence_page(page_id, base_url, auth)
+        all_page_content += content + "\n"
+
+    # Initialize OpenAI embeddings (or any other embedding model)
+    embeddings = OpenAIEmbeddings()
+
+    # Vectorize the scraped data
+    vectors = vectorize_text(all_page_content, embeddings)
+
+    # Save vectors to disk
+    save_vectors_to_disk(vectors)
+
+    # Load vectors from disk (optional)
+    vectorstore = load_vectors_from_disk()
+
+    # Query the LLaMA model with a sample query
+    query = "Explain the process for creating a new Confluence page."
+    llama_url = "http://localhost:5000"  # Replace with your internal LLaMA model URL
+
+    # Get response from LLaMA model
+    response = query_llama_model(query, llama_url, vectorstore)
+    print("Response from LLaMA model:", response)
