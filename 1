@@ -1,93 +1,57 @@
-import os
 import requests
-from langchain import LLMChain, PromptTemplate
-from langchain.vectorstores import FAISS
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.llms import OpenAI
+from bs4 import BeautifulSoup
+from langchain.schema import Document
 
-# Set environment variables for LLaMA API and OpenAI keys
-os.environ["LLAMA_API_KEY"] = "your_llama_api_key"
-os.environ["OPENAI_API_KEY"] = "your_openai_api_key"
+# Confluence REST API setup
+CONFLUENCE_BASE_URL = "https://your-confluence-domain.atlassian.net/wiki/rest/api/content/"
+API_USERNAME = "your-email"
+API_TOKEN = "your-api-token"
 
-# Function to scrape Confluence page content using Confluence REST API
-def scrape_confluence_page(page_id, base_url, auth):
-    url = f"{base_url}/rest/api/content/{page_id}?expand=body.storage"
-    response = requests.get(url, auth=auth)
+# Function to fetch Confluence page content
+def fetch_confluence_page(page_id):
+    url = f"{CONFLUENCE_BASE_URL}{page_id}?expand=body.view"
+    response = requests.get(url, auth=(API_USERNAME, API_TOKEN))
     if response.status_code == 200:
-        page_content = response.json()['body']['storage']['value']
-        return page_content
+        data = response.json()
+        return data['body']['view']['value']
     else:
-        raise Exception(f"Failed to retrieve page content: {response.status_code}")
+        print(f"Error fetching page {page_id}: {response.status_code}")
+        return None
 
-# Function to vectorize text data
-def vectorize_text(text_data, embeddings):
-    text_splitter = CharacterTextSplitter(separator="\n", chunk_size=1000, chunk_overlap=0)
-    texts = text_splitter.split_text(text_data)
-    return embeddings.embed_text(texts)
+# Function to extract paragraphs as documents from the Confluence page
+def extract_documents_from_html(html_content, page_id):
+    soup = BeautifulSoup(html_content, "lxml")  # Parse the HTML using BeautifulSoup
+    paragraphs = soup.find_all("p")  # Find all <p> tags (paragraphs)
 
-# Save vectorized data to local disk
-def save_vectors_to_disk(vectors, file_path="vector_data.faiss"):
-    faiss_index = FAISS.from_embeddings(vectors)
-    faiss_index.save_local(file_path)
-
-# Load vectors from disk
-def load_vectors_from_disk(file_path="vector_data.faiss"):
-    return FAISS.load_local(file_path)
-
-# Query the LLaMA model using Langchain
-def query_llama_model(query, llama_url, vectorstore):
-    similar_docs = vectorstore.similarity_search(query)
-    context = "\n".join([doc.page_content for doc in similar_docs])
-
-    # Define LLaMA API prompt
-    prompt_template = PromptTemplate(
-        input_variables=["context", "query"],
-        template="""
-        You are an assistant with access to Confluence data. Based on the context provided below, 
-        answer the following query:
-        
-        Context: {context}
-        Query: {query}
-        
-        Provide the most relevant answer based on the available data.
-        """
-    )
+    documents = []
     
-    chain = LLMChain(llm=OpenAI(model="llama"), prompt=prompt_template)
-    response = chain.run(context=context, query=query)
-    return response
+    # Iterate through paragraphs and create a LangChain Document for each
+    for paragraph in paragraphs:
+        text = paragraph.get_text(strip=True)
+        if text:
+            # Metadata can include additional information such as the page ID or section info
+            metadata = {"page_id": page_id}
+            document = Document(page_content=text, metadata=metadata)
+            documents.append(document)
+    
+    return documents
+
+# Function to fetch and process a Confluence page as LangChain Documents
+def scrape_confluence_page_to_documents(page_id):
+    page_content = fetch_confluence_page(page_id)
+    if page_content:
+        documents = extract_documents_from_html(page_content, page_id)
+        return documents
+    return []
 
 # Example usage
-if __name__ == "__main__":
-    # Confluence API details
-    base_url = "https://your_confluence_instance.com"
-    auth = ("username", "api_token")
+page_id = "123456"  # Replace with your actual Confluence page ID
+documents = scrape_confluence_page_to_documents(page_id)
 
-    # Scrape Confluence pages
-    page_ids = ["12345", "67890"]  # Replace with actual page IDs
-    all_page_content = ""
-    
-    for page_id in page_ids:
-        content = scrape_confluence_page(page_id, base_url, auth)
-        all_page_content += content + "\n"
-
-    # Initialize OpenAI embeddings (or any other embedding model)
-    embeddings = OpenAIEmbeddings()
-
-    # Vectorize the scraped data
-    vectors = vectorize_text(all_page_content, embeddings)
-
-    # Save vectors to disk
-    save_vectors_to_disk(vectors)
-
-    # Load vectors from disk (optional)
-    vectorstore = load_vectors_from_disk()
-
-    # Query the LLaMA model with a sample query
-    query = "Explain the process for creating a new Confluence page."
-    llama_url = "http://localhost:5000"  # Replace with your internal LLaMA model URL
-
-    # Get response from LLaMA model
-    response = query_llama_model(query, llama_url, vectorstore)
-    print("Response from LLaMA model:", response)
+# Output the list of documents
+print("Extracted LangChain Documents:")
+for i, doc in enumerate(documents, 1):
+    print(f"Document {i}:")
+    print(f"Content: {doc.page_content}")
+    print(f"Metadata: {doc.metadata}")
+    print("-" * 40)
