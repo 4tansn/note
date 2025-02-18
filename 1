@@ -21,18 +21,33 @@ def fetch_confluence_page(page_id):
 # Function to extract paragraphs as documents from the Confluence page
 def extract_documents_from_html(html_content, page_id):
     soup = BeautifulSoup(html_content, "lxml")  # Parse the HTML using BeautifulSoup
-    paragraphs = soup.find_all("p")  # Find all <p> tags (paragraphs)
+    text = soup.get_text()  # Get all text from the page
+    lines = text.splitlines()  # Split the content into lines based on new lines
+
+    # Filter out any empty lines
+    lines = [line.strip() for line in lines if line.strip()]
 
     documents = []
+    temp_content = []
     
-    # Iterate through paragraphs and create a LangChain Document for each
-    for paragraph in paragraphs:
-        text = paragraph.get_text(strip=True)
-        if text:
-            # Metadata can include additional information such as the page ID or section info
+    # Iterate through lines and group them into sets of 4 lines per document
+    for line in lines:
+        temp_content.append(line)
+
+        # Once we have 4 lines, create a document
+        if len(temp_content) == 4:
+            document_text = "\n".join(temp_content)
             metadata = {"page_id": page_id}
-            document = Document(page_content=text, metadata=metadata)
+            document = Document(page_content=document_text, metadata=metadata)
             documents.append(document)
+            temp_content = []  # Clear temp_content for the next 4 lines
+    
+    # Add any remaining lines as a final document if not empty
+    if temp_content:
+        document_text = "\n".join(temp_content)
+        metadata = {"page_id": page_id}
+        document = Document(page_content=document_text, metadata=metadata)
+        documents.append(document)
     
     return documents
 
@@ -49,7 +64,7 @@ page_id = "123456"  # Replace with your actual Confluence page ID
 documents = scrape_confluence_page_to_documents(page_id)
 
 # Output the list of documents
-print("Extracted LangChain Documents:")
+print("Extracted LangChain Documents (4 lines per document):")
 for i, doc in enumerate(documents, 1):
     print(f"Document {i}:")
     print(f"Content: {doc.page_content}")
