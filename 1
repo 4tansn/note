@@ -1,72 +1,50 @@
 import requests
 from bs4 import BeautifulSoup
-from langchain.schema import Document
+from langchain.docstore.document import Document
+import tiktoken
 
-# Confluence REST API setup
-CONFLUENCE_BASE_URL = "https://your-confluence-domain.atlassian.net/wiki/rest/api/content/"
-API_USERNAME = "your-email"
-API_TOKEN = "your-api-token"
+# Define a tokenizer for the target model (e.g., GPT-3, LLaMA)
+tokenizer = tiktoken.get_encoding("gpt2")  # Choose the appropriate tokenizer
 
-# Function to fetch Confluence page content
-def fetch_confluence_page(page_id):
-    url = f"{CONFLUENCE_BASE_URL}{page_id}?expand=body.view"
-    response = requests.get(url, auth=(API_USERNAME, API_TOKEN))
-    if response.status_code == 200:
-        data = response.json()
-        return data['body']['view']['value']
-    else:
-        print(f"Error fetching page {page_id}: {response.status_code}")
-        return None
+# Function to scrape web page content
+def scrape_web_page(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, "html.parser")
 
-# Function to extract paragraphs as documents from the Confluence page
-def extract_documents_from_html(html_content, page_id):
-    soup = BeautifulSoup(html_content, "lxml")  # Parse the HTML using BeautifulSoup
-    text = soup.get_text()  # Get all text from the page
-    lines = text.splitlines()  # Split the content into lines based on new lines
+    # Extract text, paragraphs, tables, and URLs (modify as needed)
+    text_content = []
+    
+    for paragraph in soup.find_all("p"):
+        text_content.append(paragraph.get_text())
 
-    # Filter out any empty lines
-    lines = [line.strip() for line in lines if line.strip()]
+    for table in soup.find_all("table"):
+        text_content.append(table.get_text())
 
+    for link in soup.find_all("a", href=True):
+        text_content.append(f"Link: {link['href']} - Text: {link.get_text()}")
+
+    return " ".join(text_content)
+
+# Function to tokenize and split content into Langchain documents
+def create_langchain_documents(content, max_tokens=512):
+    tokens = tokenizer.encode(content)
+    
+    # Split tokens into chunks of max_tokens size
     documents = []
-    temp_content = []
-    
-    # Iterate through lines and group them into sets of 4 lines per document
-    for line in lines:
-        temp_content.append(line)
-
-        # Once we have 4 lines, create a document
-        if len(temp_content) == 4:
-            document_text = "\n".join(temp_content)
-            metadata = {"page_id": page_id}
-            document = Document(page_content=document_text, metadata=metadata)
-            documents.append(document)
-            temp_content = []  # Clear temp_content for the next 4 lines
-    
-    # Add any remaining lines as a final document if not empty
-    if temp_content:
-        document_text = "\n".join(temp_content)
-        metadata = {"page_id": page_id}
-        document = Document(page_content=document_text, metadata=metadata)
-        documents.append(document)
+    for i in range(0, len(tokens), max_tokens):
+        chunk = tokens[i:i + max_tokens]
+        chunk_text = tokenizer.decode(chunk)
+        documents.append(Document(page_content=chunk_text))
     
     return documents
 
-# Function to fetch and process a Confluence page as LangChain Documents
-def scrape_confluence_page_to_documents(page_id):
-    page_content = fetch_confluence_page(page_id)
-    if page_content:
-        documents = extract_documents_from_html(page_content, page_id)
-        return documents
-    return []
-
 # Example usage
-page_id = "123456"  # Replace with your actual Confluence page ID
-documents = scrape_confluence_page_to_documents(page_id)
+url = "https://example.com"  # Replace with the target URL
+content = scrape_web_page(url)
+documents = create_langchain_documents(content)
 
-# Output the list of documents
-print("Extracted LangChain Documents (4 lines per document):")
-for i, doc in enumerate(documents, 1):
-    print(f"Document {i}:")
-    print(f"Content: {doc.page_content}")
-    print(f"Metadata: {doc.metadata}")
-    print("-" * 40)
+# Print the Langchain documents
+for i, doc in enumerate(documents):
+    print(f"Document {i+1}:")
+    print(doc.page_content)
+    print("="*50)
