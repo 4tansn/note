@@ -44,3 +44,17 @@ graph TD
     BE -->|Call LLama LLM| LLM[LLaMA Model]
     C -->|Return Relevant Context| BE
     BE -->|Augmented Response| UI
+
+
+
+
+    Technology Stack
+Confluence Scraper: Python, BigGraph Embeddings (bge)
+Frontend: ReactJS
+Backend: NodeJS/Express or Python FastAPI (depending on implementation)
+VectorDB: Postgres with Vector support (like pgvector)
+LLM: LLaMA Model (Language Model)
+Future Improvements
+Caching: Introduce caching for frequently queried Confluence pages.
+Scaling: Enhance the architecture by introducing distributed processing for scraping and querying.
+UI Improvements: Add features to enhance the chatbot's interactivity and provide suggestions based on prior queries.
