@@ -1,60 +1,131 @@
-# RAG Application Architecture
+import React, { useState } from 'react';
+import { TextField, Button, Card, CardContent, Typography } from '@mui/material';
+import axios from 'axios';
 
-## Overview
-This document explains the architecture and design of the Retrieval-Augmented Generation (RAG) application built to retrieve context from Confluence pages using embeddings and large language models (LLMs). The system is composed of four primary components: Confluence Scraper, ReactJS Chatbot UI, Backend for UI, and Postgres VectorDB.
+// Function to parse and format the text based on the response structure
+const parseMessage = (text) => {
+  // Handle the custom bullet points, newline, and header formatting
+  const parts = text.split('\n').map((line, index) => {
+    // Check if the line is a header (text between **)
+    if (line.startsWith('**') && line.endsWith('**')) {
+      return (
+        <Typography key={index} variant="h6" style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+          {line.replace(/\*\*/g, '')} {/* Remove ** for rendering */}
+        </Typography>
+      );
+    }
 
-## System Components
+    // Handle bullet points (• or other symbols) by detecting and adding them to the UI
+    if (line.startsWith('•')) {
+      return (
+        <Typography key={index} style={{ whiteSpace: 'pre-wrap', marginBottom: '8px' }}>
+          {line}
+        </Typography>
+      );
+    }
 
-### 1. Confluence Scraper
-- **Function**: Scrapes content from Confluence pages and generates vector embeddings using **bge** (BigGraph Embeddings).
-- **Process**:
-  1. Extracts data from Confluence.
-  2. Transforms text into vector embeddings.
-  3. Stores embeddings in the Postgres VectorDB for efficient retrieval.
+    // Render regular text
+    return (
+      <Typography key={index} style={{ whiteSpace: 'pre-wrap', marginBottom: '8px' }}>
+        {line}
+      </Typography>
+    );
+  });
 
-### 2. Chatbot UI (ReactJS)
-- **Function**: A frontend user interface allowing users to input queries and receive responses augmented by relevant context from Confluence pages.
-- **Process**:
-  1. Takes user input as a query.
-  2. Forwards the query to the backend service.
-  3. Displays responses from the LLaMA LLM augmented with context.
+  return parts;
+};
 
-### 3. Backend for UI
-- **Function**: Serves as an intermediary between the ReactJS UI and the other system components (LLM, VectorDB).
-- **Process**:
-  1. Receives user queries from the frontend.
-  2. Queries the Postgres VectorDB for similar embeddings.
-  3. Augments the LLaMA model's response with the retrieved context.
-  4. Sends the final response back to the UI for display.
+const Chatbot = () => {
+  const [messages, setMessages] = useState([
+    { text: 'Hello! How can I help you today?', sender: 'bot' }
+  ]);
+  const [input, setInput] = useState('');
+  const [id, setId] = useState(1); // Assuming ID starts at 1 and increments with each message
 
-### 4. Postgres VectorDB
-- **Function**: A vector database that stores the embeddings generated from the Confluence pages for fast similarity search.
-- **Process**:
-  1. Stores embeddings as vectors.
-  2. Returns the most similar embeddings when queried by the backend to provide contextual data.
+  const handleSend = async () => {
+    if (input.trim()) {
+      // Add user message to the chat
+      setMessages([...messages, { text: input, sender: 'user' }]);
 
-## Design Diagram
+      // Prepare the payload for the backend
+      const payload = {
+        input: input,
+        id: id.toString(), // Convert ID to string as per the backend structure
+      };
 
-```mermaid
-graph TD
-    A[Confluence Pages] -->|Scraped Content| B[Confluence Scraper]
-    B -->|Generate Embeddings| C[Postgres VectorDB]
-    UI[Chatbot UI (ReactJS)] -->|User Query| BE[Backend]
-    BE -->|Retrieve Embeddings| C
-    BE -->|Call LLama LLM| LLM[LLaMA Model]
-    C -->|Return Relevant Context| BE
-    BE -->|Augmented Response| UI
+      // Call the backend API
+      try {
+        const response = await axios.post('http://localhost:8080/generate/single', payload, {
+          headers: { 'Content-Type': 'application/json' }
+        });
 
+        // Add bot response to the chat, parsing the result
+        setMessages(prev => [...prev, { text: response.data.result, sender: 'bot' }]);
+      } catch (error) {
+        console.error('Error communicating with the backend API', error);
+        setMessages(prev => [...prev, { text: 'Sorry, something went wrong!', sender: 'bot' }]);
+      }
 
+      // Increment ID for the next request
+      setId(prevId => prevId + 1);
 
+      // Clear the input field
+      setInput('');
+    }
+  };
 
-    Technology Stack
-Confluence Scraper: Python, BigGraph Embeddings (bge)
-Frontend: ReactJS
-Backend: NodeJS/Express or Python FastAPI (depending on implementation)
-VectorDB: Postgres with Vector support (like pgvector)
-LLM: LLaMA Model (Language Model)
-Future Improvements
-Caching: Introduce caching for frequently queried Confluence pages.
-Scaling: Enhance the architecture by introducing distributed processing for scraping and querying.
-UI Improvements: Add features to enhance the chatbot's interactivity and provide suggestions based on prior queries.
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f5f5' }}>
+      <Card style={{ width: '100%', maxWidth: '800px', height: '80vh', display: 'flex', flexDirection: 'column' }}>
+        <CardContent style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', padding: '0' }}>
+          <div style={{ flexGrow: 1, overflowY: 'auto', padding: '10px', backgroundColor: '#ffffff', borderRadius: '10px' }}>
+            {messages.map((msg, index) => (
+              <div
+                key={index}
+                style={{
+                  display: 'flex',
+                  justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', // Align user messages right and bot messages left
+                  marginBottom: '10px'
+                }}
+              >
+                <div
+                  style={{
+                    backgroundColor: msg.sender === 'user' ? '#1976d2' : '#e0e0e0',
+                    color: msg.sender === 'user' ? '#fff' : '#000',
+                    padding: '8px',
+                    borderRadius: '10px',
+                    maxWidth: '60%',
+                    wordWrap: 'break-word',
+                    whiteSpace: 'pre-wrap' // Preserve \n and \t in the text
+                  }}
+                >
+                  {parseMessage(msg.text)}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '10px' }}>
+            <TextField
+              variant="outlined"
+              fullWidth
+              placeholder="Type your message..."
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSend()}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSend}
+              style={{ marginLeft: '10px' }}
+            >
+              Send
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default Chatbot;
