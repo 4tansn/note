@@ -1,131 +1,42 @@
-import React, { useState } from 'react';
-import { TextField, Button, Card, CardContent, Typography } from '@mui/material';
-import axios from 'axios';
-
-// Function to parse and format the text based on the response structure
 const parseMessage = (text) => {
-  // Handle the custom bullet points, newline, and header formatting
+  // Use regular expressions to find parts of the line surrounded by **
   const parts = text.split('\n').map((line, index) => {
-    // Check if the line is a header (text between **)
-    if (line.startsWith('**') && line.endsWith('**')) {
-      return (
-        <Typography key={index} variant="h6" style={{ fontWeight: 'bold', marginBottom: '8px' }}>
-          {line.replace(/\*\*/g, '')} {/* Remove ** for rendering */}
+    // Regular expression to find **bold** text within a line
+    const boldRegex = /\*\*(.*?)\*\*/g;
+
+    const elements = [];
+    let lastIndex = 0;
+    let match;
+
+    // Process the line, finding and handling all bold sections (wrapped in **)
+    while ((match = boldRegex.exec(line)) !== null) {
+      // Add text before the **bold** section
+      if (match.index > lastIndex) {
+        elements.push(line.substring(lastIndex, match.index));
+      }
+      
+      // Add the bold text
+      elements.push(
+        <Typography component="span" key={`${index}-bold-${match.index}`} style={{ fontWeight: 'bold' }}>
+          {match[1]} {/* Only the content inside ** */}
         </Typography>
       );
+
+      // Update lastIndex to the end of the bold section
+      lastIndex = match.index + match[0].length;
     }
 
-    // Handle bullet points (• or other symbols) by detecting and adding them to the UI
-    if (line.startsWith('•')) {
-      return (
-        <Typography key={index} style={{ whiteSpace: 'pre-wrap', marginBottom: '8px' }}>
-          {line}
-        </Typography>
-      );
+    // Add remaining text after the last bold section
+    if (lastIndex < line.length) {
+      elements.push(line.substring(lastIndex));
     }
 
-    // Render regular text
     return (
       <Typography key={index} style={{ whiteSpace: 'pre-wrap', marginBottom: '8px' }}>
-        {line}
+        {elements}
       </Typography>
     );
   });
 
   return parts;
 };
-
-const Chatbot = () => {
-  const [messages, setMessages] = useState([
-    { text: 'Hello! How can I help you today?', sender: 'bot' }
-  ]);
-  const [input, setInput] = useState('');
-  const [id, setId] = useState(1); // Assuming ID starts at 1 and increments with each message
-
-  const handleSend = async () => {
-    if (input.trim()) {
-      // Add user message to the chat
-      setMessages([...messages, { text: input, sender: 'user' }]);
-
-      // Prepare the payload for the backend
-      const payload = {
-        input: input,
-        id: id.toString(), // Convert ID to string as per the backend structure
-      };
-
-      // Call the backend API
-      try {
-        const response = await axios.post('http://localhost:8080/generate/single', payload, {
-          headers: { 'Content-Type': 'application/json' }
-        });
-
-        // Add bot response to the chat, parsing the result
-        setMessages(prev => [...prev, { text: response.data.result, sender: 'bot' }]);
-      } catch (error) {
-        console.error('Error communicating with the backend API', error);
-        setMessages(prev => [...prev, { text: 'Sorry, something went wrong!', sender: 'bot' }]);
-      }
-
-      // Increment ID for the next request
-      setId(prevId => prevId + 1);
-
-      // Clear the input field
-      setInput('');
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f5f5' }}>
-      <Card style={{ width: '100%', maxWidth: '800px', height: '80vh', display: 'flex', flexDirection: 'column' }}>
-        <CardContent style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', padding: '0' }}>
-          <div style={{ flexGrow: 1, overflowY: 'auto', padding: '10px', backgroundColor: '#ffffff', borderRadius: '10px' }}>
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                style={{
-                  display: 'flex',
-                  justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', // Align user messages right and bot messages left
-                  marginBottom: '10px'
-                }}
-              >
-                <div
-                  style={{
-                    backgroundColor: msg.sender === 'user' ? '#1976d2' : '#e0e0e0',
-                    color: msg.sender === 'user' ? '#fff' : '#000',
-                    padding: '8px',
-                    borderRadius: '10px',
-                    maxWidth: '60%',
-                    wordWrap: 'break-word',
-                    whiteSpace: 'pre-wrap' // Preserve \n and \t in the text
-                  }}
-                >
-                  {parseMessage(msg.text)}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', padding: '10px' }}>
-            <TextField
-              variant="outlined"
-              fullWidth
-              placeholder="Type your message..."
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSend()}
-            />
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleSend}
-              style={{ marginLeft: '10px' }}
-            >
-              Send
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-export default Chatbot;
