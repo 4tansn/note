@@ -1,37 +1,66 @@
-{msg.sender === 'user' ? (
-                  <>
-                    <div
-                      style={{
-                        backgroundColor: '#1976d2',
-                        color: '#fff',
-                        padding: '8px',
-                        borderRadius: '10px',
-                        border: '1px solid #ddd', // Add border to the messages
-                        maxWidth: '60%',
-                        wordWrap: 'break-word',
-                        whiteSpace: 'pre-wrap'
-                      }}
-                    >
-                      {parseMessage(msg.text)}
-                    </div>
-                    <Person style={{ alignSelf: 'flex-end', marginLeft: '8px', color: '#1976d2' }} />
-                  </>
-                ) : (
-                  <>
-                    <SmartToy style={{ alignSelf: 'flex-start', marginRight: '8px', color: '#e0e0e0' }} />
-                    <div
-                      style={{
-                        backgroundColor: '#e0e0e0',
-                        color: '#000',
-                        padding: '8px',
-                        borderRadius: '10px',
-                        border: '1px solid #ddd', // Add border to the messages
-                        maxWidth: '60%',
-                        wordWrap: 'break-word',
-                        whiteSpace: 'pre-wrap'
-                      }}
-                    >
-                      {parseMessage(msg.text)}
-                    </div>
-                  </>
-                )}
+# Chatbot UI with Backend Integration
+
+This is a React-based chatbot interface that allows users to interact with a backend API. The chatbot processes user inputs and displays responses from the backend, handling text formatting such as newlines (`\n`), bullet points (`•`), and bold headers using `**`.
+
+## Features
+
+- **Backend Integration**: Sends user input to a backend API using a `POST` request and displays the response.
+- **Text Formatting**: The UI supports structured text from the API, including:
+  - Bold headers defined by `**`.
+  - Newlines (`\n`) for line breaks.
+  - Bullet points (`•`).
+- **Dynamic Conversation**: Supports a chat interface with messages from both user and bot.
+
+## Technologies Used
+
+- **React**: For building the UI components.
+- **Material UI (MUI)**: For UI elements like buttons, text fields, and cards.
+- **Axios**: For making API calls.
+- **CSS Flexbox**: For layout management.
+- **Typography**: For parsing and displaying formatted text.
+
+## Getting Started
+
+### Prerequisites
+
+To run this project locally, you need to have the following installed:
+
+- [Node.js](https://nodejs.org/en/) (v14.x or higher)
+- [npm](https://www.npmjs.com/) (v6.x or higher)
+
+### Installation
+
+1. **Clone the Repository**:
+
+    ```bash
+    git clone https://github.com/your-repo/chatbot-ui.git
+    cd chatbot-ui
+    ```
+
+2. **Install Dependencies**:
+
+    Run the following command to install all required dependencies:
+
+    ```bash
+    npm install
+    ```
+
+3. **Start the Development Server**:
+
+    Start the local development server by running:
+
+    ```bash
+    npm start
+    ```
+
+    The application will run on `http://localhost:3000`.
+
+### Backend Setup
+
+This UI is designed to work with a backend API that accepts POST requests at `http://localhost:8080/generate/single`. The request body should contain:
+
+```json
+{
+  "input": "Your user input here",
+  "id": "1"
+}
