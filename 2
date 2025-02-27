@@ -1,66 +1,25 @@
-# Chatbot UI with Backend Integration
+traceparent Header:
 
-This is a React-based chatbot interface that allows users to interact with a backend API. The chatbot processes user inputs and displays responses from the backend, handling text formatting such as newlines (`\n`), bullet points (`•`), and bold headers using `**`.
+The main header that carries essential information about the trace.
+Structure: version-traceId-parentId-flags
+Version: Defines the format version of the header (currently 00).
+Trace ID: A 16-byte unique identifier for the trace, used to connect all spans.
+Parent ID: An 8-byte identifier for the span that caused this request (i.e., the parent span).
+Flags: A 2-character flag used for sampling decisions (e.g., 01 for sampling enabled, 00 for disabled).
+Example:
 
-## Features
+makefile
+Copy
+Edit
+traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+This indicates the request is part of trace 4bf92f3577b34da6a3ce929d0e0e4736 with the parent span ID 00f067aa0ba902b7, and sampling is enabled (01).
+tracestate Header:
 
-- **Backend Integration**: Sends user input to a backend API using a `POST` request and displays the response.
-- **Text Formatting**: The UI supports structured text from the API, including:
-  - Bold headers defined by `**`.
-  - Newlines (`\n`) for line breaks.
-  - Bullet points (`•`).
-- **Dynamic Conversation**: Supports a chat interface with messages from both user and bot.
+Provides additional vendor-specific information about the trace.
+This allows different tracing systems (like Dynatrace, OpenTelemetry, Jaeger) to attach their own metadata while maintaining interoperability.
+Example: tracestate: vendor1=value1,vendor2=value2.
+Propagation Mechanism:
 
-## Technologies Used
-
-- **React**: For building the UI components.
-- **Material UI (MUI)**: For UI elements like buttons, text fields, and cards.
-- **Axios**: For making API calls.
-- **CSS Flexbox**: For layout management.
-- **Typography**: For parsing and displaying formatted text.
-
-## Getting Started
-
-### Prerequisites
-
-To run this project locally, you need to have the following installed:
-
-- [Node.js](https://nodejs.org/en/) (v14.x or higher)
-- [npm](https://www.npmjs.com/) (v6.x or higher)
-
-### Installation
-
-1. **Clone the Repository**:
-
-    ```bash
-    git clone https://github.com/your-repo/chatbot-ui.git
-    cd chatbot-ui
-    ```
-
-2. **Install Dependencies**:
-
-    Run the following command to install all required dependencies:
-
-    ```bash
-    npm install
-    ```
-
-3. **Start the Development Server**:
-
-    Start the local development server by running:
-
-    ```bash
-    npm start
-    ```
-
-    The application will run on `http://localhost:3000`.
-
-### Backend Setup
-
-This UI is designed to work with a backend API that accepts POST requests at `http://localhost:8080/generate/single`. The request body should contain:
-
-```json
-{
-  "input": "Your user input here",
-  "id": "1"
-}
+When a service handles an incoming request, it reads the traceparent header and continues the trace, creating a child span.
+This new span contains the same Trace ID but a new Parent ID, representing the span for the current service.
+The sampling flag in the traceparent header indicates whether to record and export the trace (if 01) or not (if 00).
