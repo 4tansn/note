@@ -1,22 +1,19 @@
-OpenTelemetry Utility for Vert.x Application
-1. Initialize OpenTelemetry
-Purpose: Initializes OpenTelemetry in the DeployVerticle of the Vert.x application.
-Details:
-Ensures tracing and observability across the entire Vert.x-based application.
-Provides the foundation for tracking distributed traces.
-2. Get Tracer
-Purpose: Retrieves the OpenTelemetry Tracer.
-Details:
-Used for creating new spans.
-Helps track events and interactions within the application.
-3. Start Span
-Overloaded Methods:
-From Payment Service Context:
-Starts a span in the context of a payment service transaction.
-From Parent Span:
-Starts a child span linked to a parent span, enabling nested tracing.
-4. Close Span and Scope
-Purpose: Closes the active span and scope.
-Details:
-Ensures span completion is properly recorded.
-Helps in finalizing trace data before sending it to the backend for analysis.
+[ServiceNow Incidents] ----> [Python Script] ----> [Cachet API]
+     (REST API)                  (Cron)           (Incidents)
+
+[Elasticsearch Metrics] ----> [Python Script] ----> [Cachet API]
+    (Heartbeat Data)             (Cron)           (Components)
+
+
+
+
+    Cachet  
+
+Upptime  
+
+Statping-ng  
+
+Uptime Kuma  
+
+Kener  
+
