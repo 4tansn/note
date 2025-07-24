@@ -1,3 +1,12 @@
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.X509v3CertificateBuilder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+
 import java.io.FileOutputStream;
 import java.math.BigInteger;
 import java.nio.file.Files;
@@ -5,63 +14,64 @@ import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.X509Certificate;
 import java.util.Date;
-import javax.security.auth.x500.X500Principal;
-import sun.security.x509.*;
 
-public class KeystoreGenerator {
+public class BouncyCastleKeystoreGenerator {
 
     public static void main(String[] args) throws Exception {
         String keystorePath = "src/test/resources/keystore_E1.jks";
+        String alias = "enterprisewallet_encryption_e2_2018_20";
         String password = "amex123";
-        String keyAlias = "enterprisewallet_encryption_e2_2018_20";
 
-        createJKS(keystorePath, password, keyAlias);
-        System.out.println("JKS created at: " + keystorePath);
+        createJKS(keystorePath, password, alias);
+        System.out.println("✅ JKS created at: " + keystorePath);
     }
 
-    public static void createJKS(String filePath, String password, String alias) throws Exception {
-        // Ensure target directory exists
-        Files.createDirectories(Paths.get(filePath).getParent());
+    public static void createJKS(String keystorePath, String password, String alias) throws Exception {
+        Security.addProvider(new BouncyCastleProvider());
 
-        // Generate RSA KeyPair
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        // Ensure directory exists
+        Files.createDirectories(Paths.get(keystorePath).getParent());
+
+        // Generate RSA keypair
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA", "BC");
         keyGen.initialize(2048);
         KeyPair keyPair = keyGen.generateKeyPair();
 
-        // Build X.509 Certificate
-        X500Principal dnName = new X500Principal("CN=Test Cert, OU=Amex, O=Test Org, L=City, ST=State, C=IN");
-        long now = System.currentTimeMillis();
-        Date startDate = new Date(now);
-        Date endDate = new Date(now + 365L * 24 * 60 * 60 * 1000); // 1 year
+        // Build certificate
+        X500Name subject = new X500Name("CN=Test Cert, O=Amex, C=IN");
+        BigInteger serial = BigInteger.valueOf(System.currentTimeMillis());
+        Date notBefore = new Date();
+        Date notAfter = new Date(System.currentTimeMillis() + 365L * 24 * 60 * 60 * 1000); // 1 year
 
-        X509CertInfo certInfo = new X509CertInfo();
-        certInfo.set(X509CertInfo.VERSION, new CertificateVersion(CertificateVersion.V3));
-        certInfo.set(X509CertInfo.SERIAL_NUMBER, new CertificateSerialNumber(new BigInteger(64, new SecureRandom())));
-        certInfo.set(X509CertInfo.SUBJECT, new CertificateSubjectName(dnName));
-        certInfo.set(X509CertInfo.ISSUER, new CertificateIssuerName(dnName));
-        certInfo.set(X509CertInfo.VALIDITY, new CertificateValidity(startDate, endDate));
-        certInfo.set(X509CertInfo.KEY, new CertificateX509Key(keyPair.getPublic()));
-        certInfo.set(X509CertInfo.ALGORITHM_ID,
-                new CertificateAlgorithmId(AlgorithmId.get("SHA256withRSA")));
+        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(keyPair.getPrivate());
+        X509v3CertificateBuilder certBuilder = new JcaX509v3CertificateBuilder(
+                subject,
+                serial,
+                notBefore,
+                notAfter,
+                subject,
+                keyPair.getPublic()
+        );
 
-        // Sign the certificate
-        X509CertImpl cert = new X509CertImpl(certInfo);
-        cert.sign(keyPair.getPrivate(), "SHA256withRSA");
+        X509CertificateHolder certHolder = certBuilder.build(signer);
+        X509Certificate cert = new JcaX509CertificateConverter()
+                .setProvider("BC")
+                .getCertificate(certHolder);
 
-        // Re-sign with updated algorithm
-        certInfo.set(CertificateAlgorithmId.NAME + "." + CertificateAlgorithmId.ALGORITHM,
-                cert.get(X509CertImpl.SIG_ALG));
-        cert = new X509CertImpl(certInfo);
-        cert.sign(keyPair.getPrivate(), "SHA256withRSA");
-
-        // Create JKS and store the key + cert
+        // Create keystore and store key+cert
         KeyStore keyStore = KeyStore.getInstance("JKS");
         keyStore.load(null, password.toCharArray());
         keyStore.setKeyEntry(alias, keyPair.getPrivate(), password.toCharArray(), new X509Certificate[]{cert});
 
-        // Write to file
-        try (FileOutputStream fos = new FileOutputStream(filePath)) {
+        try (FileOutputStream fos = new FileOutputStream(keystorePath)) {
             keyStore.store(fos, password.toCharArray());
         }
     }
 }
+
+
+  <dependency>
+    <groupId>org.bouncycastle</groupId>
+    <artifactId>bcprov-jdk15on</artifactId>
+    <version>1.70</version> <!-- Use latest available -->
+</dependency>
