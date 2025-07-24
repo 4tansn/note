@@ -1,11 +1,8 @@
-Dear [Director's Name],
-
-I hope this message finds you well.
-
-As part of the SRE initiative to migrate from JKS to Vault across over 100 applications, we have successfully completed the migration for the Apple Pay repository. However, during post-migration validation, we observed that a few unit test cases are directly dependent on the JKS certificates.
-
-Since unit tests ideally should not rely on external certificate files, these specific tests will require refactoring to mock the certificate behavior. Given the tight timelines and the scale of ongoing migration work, we are planning to temporarily skip these certificate-dependent unit tests in the Jenkins build for the Apple Pay repo.
-
-We kindly request support from your development team to update these tests to follow best practices by mocking the certificate interactions. This will ensure long-term maintainability and test reliability as we progress with the Vault integration.
-
-Please let us know if you have any concerns or need further details from our end. We appreciate your understanding and collaboration in helping us complete this critical migration smoothly.
+@BeforeAll
+public static void setupKeystore() throws Exception {
+    KeystoreGenerator.createJKS(
+        "src/test/resources/keystore_E1.jks",
+        "amex123",
+        "enterprisewallet_encryption_e2_2018_20"
+    );
+}
