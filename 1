@@ -1,16 +1,67 @@
-Subject: Status Update & Sign-Off Request for Couchbase DB Server Upgrade (E3 Cluster)
+import java.io.FileOutputStream;
+import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.*;
+import java.security.cert.X509Certificate;
+import java.util.Date;
+import javax.security.auth.x500.X500Principal;
+import sun.security.x509.*;
 
-Dear Team,
+public class KeystoreGenerator {
 
-This is to inform you that both the Paperless Service and DB-Accesser Utility are currently using Couchbase Java SDK version 3.3, which is compatible with Couchbase Server version 7.6.5.
+    public static void main(String[] args) throws Exception {
+        String keystorePath = "src/test/resources/keystore_E1.jks";
+        String password = "amex123";
+        String keyAlias = "enterprisewallet_encryption_e2_2018_20";
 
-We have successfully upgraded the Couchbase database servers in E1 and E2 environments to version 7.6.5. All services are working as expected post-upgrade.
+        createJKS(keystorePath, password, keyAlias);
+        System.out.println("JKS created at: " + keystorePath);
+    }
 
-We are now ready to proceed with upgrading the E3 Couchbase cluster to version 7.6.5.
+    public static void createJKS(String filePath, String password, String alias) throws Exception {
+        // Ensure target directory exists
+        Files.createDirectories(Paths.get(filePath).getParent());
 
-Kindly review and provide your sign-off to initiate the upgrade in the E3 environment.
+        // Generate RSA KeyPair
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048);
+        KeyPair keyPair = keyGen.generateKeyPair();
 
-Best regards,
-[Your Name]
-[Your Team / Project Name]
-[Contact Information]
+        // Build X.509 Certificate
+        X500Principal dnName = new X500Principal("CN=Test Cert, OU=Amex, O=Test Org, L=City, ST=State, C=IN");
+        long now = System.currentTimeMillis();
+        Date startDate = new Date(now);
+        Date endDate = new Date(now + 365L * 24 * 60 * 60 * 1000); // 1 year
+
+        X509CertInfo certInfo = new X509CertInfo();
+        certInfo.set(X509CertInfo.VERSION, new CertificateVersion(CertificateVersion.V3));
+        certInfo.set(X509CertInfo.SERIAL_NUMBER, new CertificateSerialNumber(new BigInteger(64, new SecureRandom())));
+        certInfo.set(X509CertInfo.SUBJECT, new CertificateSubjectName(dnName));
+        certInfo.set(X509CertInfo.ISSUER, new CertificateIssuerName(dnName));
+        certInfo.set(X509CertInfo.VALIDITY, new CertificateValidity(startDate, endDate));
+        certInfo.set(X509CertInfo.KEY, new CertificateX509Key(keyPair.getPublic()));
+        certInfo.set(X509CertInfo.ALGORITHM_ID,
+                new CertificateAlgorithmId(AlgorithmId.get("SHA256withRSA")));
+
+        // Sign the certificate
+        X509CertImpl cert = new X509CertImpl(certInfo);
+        cert.sign(keyPair.getPrivate(), "SHA256withRSA");
+
+        // Re-sign with updated algorithm
+        certInfo.set(CertificateAlgorithmId.NAME + "." + CertificateAlgorithmId.ALGORITHM,
+                cert.get(X509CertImpl.SIG_ALG));
+        cert = new X509CertImpl(certInfo);
+        cert.sign(keyPair.getPrivate(), "SHA256withRSA");
+
+        // Create JKS and store the key + cert
+        KeyStore keyStore = KeyStore.getInstance("JKS");
+        keyStore.load(null, password.toCharArray());
+        keyStore.setKeyEntry(alias, keyPair.getPrivate(), password.toCharArray(), new X509Certificate[]{cert});
+
+        // Write to file
+        try (FileOutputStream fos = new FileOutputStream(filePath)) {
+            keyStore.store(fos, password.toCharArray());
+        }
+    }
+}
