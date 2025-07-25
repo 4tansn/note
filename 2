@@ -1,8 +1,10 @@
-@BeforeAll
-public static void setupKeystore() throws Exception {
-    KeystoreGenerator.createJKS(
-        "src/test/resources/keystore_E1.jks",
-        "amex123",
-        "enterprisewallet_encryption_e2_2018_20"
-    );
-}
+We have completed the code changes for the Credit Engine and have raised the corresponding PR.
+In addition, we’ve incorporated the Couchbase SDK upgrade changes in the develop branch.
+
+The updated code has also been deployed to the E1 and E2 environments under the develop branch so that it can be validated as part of other BAU testing activities.
+
+As discussed on Slack, our team will not be able to support this beyond 30th July. Pravin’s team will be taking ownership of the RFC, and the production deployment is currently planned for 19th August.
+
+Please note that after the 30th July deadline, this cluster will be flagged as a risk by the Platform Health Campaign.
+
+Let us know if you encounter any issues during deployment—we’ll be happy to assist while we’re still supporting.
