@@ -1,10 +1,13 @@
 package com.yourorg;
 
-import org.openrewrite.*;
-import org.openrewrite.exec.*;
-import org.openrewrite.ScheduledExecution;
+import org.openrewrite.ExecutionContext;
+import org.openrewrite.Recipe;
+import org.openrewrite.ScanningRecipe;
+import org.openrewrite.SourceFile;
+import org.openrewrite.TreeVisitor;
 
-public class ListAndDeleteJks extends ScanningRecipe {
+public class ListAndDeleteJks extends ScanningRecipe<Void> {
+
     @Override
     public String getDisplayName() {
         return "List all files and delete .jks";
@@ -16,14 +19,31 @@ public class ListAndDeleteJks extends ScanningRecipe {
     }
 
     @Override
-    protected TreeVisitor<?, ExecutionContext> getScanner(ExecutionContext ctx) {
+    public Void getInitialValue(ExecutionContext ctx) {
+        return null; // no state needed
+    }
+
+    @Override
+    public TreeVisitor<?, ExecutionContext> getScanner(Void acc) {
+        // This runs once per file during scanning
         return new TreeVisitor<SourceFile, ExecutionContext>() {
             @Override
             public SourceFile visitSourceFile(SourceFile sf, ExecutionContext ctx) {
                 System.out.println("Visited file: " + sf.getSourcePath());
+                return sf;
+            }
+        };
+    }
+
+    @Override
+    public TreeVisitor<?, ExecutionContext> getVisitor(Void acc) {
+        // This applies transformations after scanning
+        return new TreeVisitor<SourceFile, ExecutionContext>() {
+            @Override
+            public SourceFile visitSourceFile(SourceFile sf, ExecutionContext ctx) {
                 if (sf.getSourcePath().toString().endsWith(".jks")) {
                     System.out.println("  -> Deleting .jks file: " + sf.getSourcePath());
-                    return null;
+                    return null; // returning null deletes the file
                 }
                 return sf;
             }
