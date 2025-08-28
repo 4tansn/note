@@ -1,46 +1,14 @@
-package com.sourav;
-
-import org.openrewrite.ExecutionContext;
-import org.openrewrite.Recipe;
-import org.openrewrite.SourceFile;
-import org.openrewrite.TreeVisitor;
-import org.openrewrite.marker.Markers;
-import org.openrewrite.quark.Quark;
-import org.openrewrite.quark.QuarkVisitor;
-
-import java.nio.file.Path;
-
-public class DeleteJksFiles extends Recipe {
-
-    @Override
-    public String getDisplayName() {
-        return "Delete all JKS files and print checked file names";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Prints the name of each file visited and deletes any file ending with .jks";
-    }
-
-    @Override
-    public TreeVisitor<?, ExecutionContext> getVisitor() {
-        return new QuarkVisitor<ExecutionContext>() {
-            @Override
-            public Quark visitQuark(Quark quark, ExecutionContext ctx) {
-                SourceFile sf = getCursor().firstEnclosingOrThrow(SourceFile.class);
-                Path path = sf.getSourcePath();
-
-                // Print every file name visited
-                System.out.println("Checking file: " + path);
-
-                // If it's a .jks file, delete it
-                if (path.toString().endsWith(".jks")) {
-                    System.out.println("Deleting file: " + path);
-                    return null; // Returning null removes the file
-                }
-
-                return quark.withMarkers(Markers.EMPTY);
-            }
-        };
-    }
-}
+type: specs.openrewrite.org/v1beta/recipe
+name: com.yourorg.ListAllFilesAndDeleteJks
+displayName: "List all files, then delete .jks"
+description: "Print every file considered, show which .jks will be deleted, then delete them."
+recipeList:
+  # 1) Print every file path (all languages & binaries)
+  - org.openrewrite.FindSourceFiles:
+      filePattern: "**/*"
+  # 2) Also print only the .jks files (so you see the exact targets)
+  - org.openrewrite.FindSourceFiles:
+      filePattern: "**/*.jks"
+  # 3) Delete all .jks files
+  - org.openrewrite.DeleteSourceFiles:
+      filePattern: "**/*.jks"
