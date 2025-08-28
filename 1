@@ -2,21 +2,24 @@ package com.sourav;
 
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
+import org.openrewrite.SourceFile;
 import org.openrewrite.TreeVisitor;
+import org.openrewrite.marker.Markers;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.quark.QuarkVisitor;
-import org.openrewrite.SourceFile;
 
-public class ListAllFiles extends Recipe {
+import java.nio.file.Path;
+
+public class DeleteJksFiles extends Recipe {
 
     @Override
     public String getDisplayName() {
-        return "List all file names";
+        return "Delete all JKS files and print checked file names";
     }
 
     @Override
     public String getDescription() {
-        return "Prints out all file names in the repository.";
+        return "Prints the name of each file visited and deletes any file ending with .jks";
     }
 
     @Override
@@ -24,10 +27,19 @@ public class ListAllFiles extends Recipe {
         return new QuarkVisitor<ExecutionContext>() {
             @Override
             public Quark visitQuark(Quark quark, ExecutionContext ctx) {
-                // Every SourceFile has a sourcePath
-                getCursor().getParentOrThrow().getPath(SourceFile.class)
-                    .ifPresent(sf -> System.out.println(sf.getSourcePath()));
-                return quark;
+                SourceFile sf = getCursor().firstEnclosingOrThrow(SourceFile.class);
+                Path path = sf.getSourcePath();
+
+                // Print every file name visited
+                System.out.println("Checking file: " + path);
+
+                // If it's a .jks file, delete it
+                if (path.toString().endsWith(".jks")) {
+                    System.out.println("Deleting file: " + path);
+                    return null; // Returning null removes the file
+                }
+
+                return quark.withMarkers(Markers.EMPTY);
             }
         };
     }
