@@ -1,14 +1,32 @@
-type: specs.openrewrite.org/v1beta/recipe
-name: com.yourorg.ListAllFilesAndDeleteJks
-displayName: "List all files, then delete .jks"
-description: "Print every file considered, show which .jks will be deleted, then delete them."
-recipeList:
-  # 1) Print every file path (all languages & binaries)
-  - org.openrewrite.FindSourceFiles:
-      filePattern: "**/*"
-  # 2) Also print only the .jks files (so you see the exact targets)
-  - org.openrewrite.FindSourceFiles:
-      filePattern: "**/*.jks"
-  # 3) Delete all .jks files
-  - org.openrewrite.DeleteSourceFiles:
-      filePattern: "**/*.jks"
+package com.yourorg;
+
+import org.openrewrite.*;
+import org.openrewrite.exec.*;
+import org.openrewrite.ScheduledExecution;
+
+public class ListAndDeleteJks extends ScanningRecipe {
+    @Override
+    public String getDisplayName() {
+        return "List all files and delete .jks";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Prints all file paths and deletes those ending with .jks";
+    }
+
+    @Override
+    protected TreeVisitor<?, ExecutionContext> getScanner(ExecutionContext ctx) {
+        return new TreeVisitor<SourceFile, ExecutionContext>() {
+            @Override
+            public SourceFile visitSourceFile(SourceFile sf, ExecutionContext ctx) {
+                System.out.println("Visited file: " + sf.getSourcePath());
+                if (sf.getSourcePath().toString().endsWith(".jks")) {
+                    System.out.println("  -> Deleting .jks file: " + sf.getSourcePath());
+                    return null;
+                }
+                return sf;
+            }
+        };
+    }
+}
