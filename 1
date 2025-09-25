@@ -1,14 +1,63 @@
-@Override
-protected TreeVisitor<?, ExecutionContext> getScanner(ExecutionContext ctx) {
-    return new TreeVisitor<SourceFile, ExecutionContext>() {
-        @Override
-        public SourceFile visitSourceFile(SourceFile sf, ExecutionContext ctx) {
-            System.out.println("Visited file: " + sf.getSourcePath());
-            if (sf.getSourcePath().toString().endsWith(".jks")) {
-                System.out.println(" -> Deleting .jks file: " + sf.getSourcePath());
-                return null;
-            }
-            return sf;
-        }
-    };
-}
+import base64
+import struct
+import datetime
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
+from io import BytesIO
+
+
+def read_utf(data):
+    """Read a Java UTF string (2-byte length prefix)."""
+    length, = struct.unpack(">H", data.read(2))
+    return data.read(length).decode("utf-8")
+
+
+def list_expiring_certs_from_b64(b64_str, days=90):
+    keystore_bytes = base64.b64decode(b64_str)
+    data = BytesIO(keystore_bytes)
+
+    # Skip magic and version
+    magic, version = struct.unpack(">II", data.read(8))
+    if magic != 0xFEEDFEED:
+        raise ValueError("Not a valid JKS keystore")
+
+    entry_count, = struct.unpack(">I", data.read(4))
+
+    print(f"Checking {entry_count} entries in keystore...\n")
+
+    for _ in range(entry_count):
+        tag = struct.unpack(">I", data.read(4))[0]
+        alias = read_utf(data)
+        timestamp = struct.unpack(">q", data.read(8))[0]
+
+        if tag == 2:  # TrustedCertEntry
+            type_str = read_utf(data)
+            cert_len, = struct.unpack(">I", data.read(4))
+            cert_bytes = data.read(cert_len)
+
+            x509_cert = x509.load_der_x509_certificate(cert_bytes, default_backend())
+            not_after = x509_cert.not_valid_after
+
+            days_left = (not_after - datetime.datetime.utcnow()).days
+            if days_left <= days:
+                print(f"[WARNING] Alias: {alias}")
+                print(f"  Subject   : {x509_cert.subject.rfc4514_string()}")
+                print(f"  Expiry    : {not_after}")
+                print(f"  Days Left : {days_left}\n")
+
+        elif tag == 1:  # PrivateKeyEntry → skip private key, skip cert chain
+            key_len, = struct.unpack(">I", data.read(4))
+            data.read(key_len)  # skip encrypted key
+            chain_len, = struct.unpack(">I", data.read(4))
+            for _ in range(chain_len):
+                type_str = read_utf(data)
+                cert_len, = struct.unpack(">I", data.read(4))
+                data.read(cert_len)  # skip cert
+
+    print("Scan complete ✅")
+
+
+# Example usage
+if __name__ == "__main__":
+    b64_jks = "BASE64_STRING_HERE"
+    list_expiring_certs_from_b64(b64_jks, days=90)
