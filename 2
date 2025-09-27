@@ -1,10 +1,99 @@
-We have completed the code changes for the Credit Engine and have raised the corresponding PR.
-In addition, we’ve incorporated the Couchbase SDK upgrade changes in the develop branch.
+import base64
+import datetime
+import io
+import struct
+from cryptography import x509
+from cryptography.hazmat.primitives.serialization import pkcs12
+from cryptography.hazmat.backends import default_backend
 
-The updated code has also been deployed to the E1 and E2 environments under the develop branch so that it can be validated as part of other BAU testing activities.
+def detect_format_and_check_expiry(data: bytes):
+    """
+    Detect format of given input and check for cert expiry (within 90 days).
+    Returns: dict with keys {format, certs, expiring_within_90_days}
+    """
+    result = {
+        "format": "UNKNOWN",
+        "certs": [],
+        "expiring_within_90_days": []
+    }
+    now = datetime.datetime.utcnow()
+    threshold = now + datetime.timedelta(days=90)
 
-As discussed on Slack, our team will not be able to support this beyond 30th July. Pravin’s team will be taking ownership of the RFC, and the production deployment is currently planned for 19th August.
+    # --- 1. Check if JKS ---
+    if len(data) > 4:
+        magic, = struct.unpack(">I", data[:4])
+        if magic == 0xFEEDFEED:
+            result["format"] = "JKS"
+            # Full JKS parsing needs `pyjks`, skipping deep parse
+            return result
 
-Please note that after the 30th July deadline, this cluster will be flagged as a risk by the Platform Health Campaign.
+    # --- 2. Check PEM ---
+    text_start = data[:40].decode(errors="ignore")
+    if "-----BEGIN" in text_start:
+        result["format"] = "PEM"
+        try:
+            pem_text = data.decode()
+            blocks = pem_text.split("-----END CERTIFICATE-----")
+            for block in blocks:
+                if "-----BEGIN CERTIFICATE-----" in block:
+                    cert_pem = block + "-----END CERTIFICATE-----"
+                    cert = x509.load_pem_x509_certificate(cert_pem.encode(), default_backend())
+                    result["certs"].append(cert)
+                    if cert.not_valid_after <= threshold:
+                        result["expiring_within_90_days"].append(cert.subject.rfc4514_string())
+        except Exception:
+            pass
+        return result
 
-Let us know if you encounter any issues during deployment—we’ll be happy to assist while we’re still supporting.
+    # --- 3. Check PKCS12 / PFX ---
+    try:
+        certs = []
+        private_key, certificate, additional_certs = pkcs12.load_key_and_certificates(data, None, default_backend())
+        if certificate:
+            certs.append(certificate)
+        if additional_certs:
+            certs.extend(additional_certs)
+
+        if certs:
+            result["format"] = "PKCS12"
+            result["certs"].extend(certs)
+            for cert in certs:
+                if cert.not_valid_after <= threshold:
+                    result["expiring_within_90_days"].append(cert.subject.rfc4514_string())
+            return result
+    except Exception:
+        pass
+
+    # --- 4. Check DER (single certificate) ---
+    try:
+        cert = x509.load_der_x509_certificate(data, default_backend())
+        result["format"] = "DER"
+        result["certs"].append(cert)
+        if cert.not_valid_after <= threshold:
+            result["expiring_within_90_days"].append(cert.subject.rfc4514_string())
+        return result
+    except Exception:
+        pass
+
+    # --- 5. Check PKCS7 (P7B) ---
+    try:
+        from cryptography.hazmat.primitives.serialization import pkcs7
+        certs = pkcs7.load_der_pkcs7_certificates(data)
+        if certs:
+            result["format"] = "PKCS7"
+            result["certs"].extend(certs)
+            for cert in certs:
+                if cert.not_valid_after <= threshold:
+                    result["expiring_within_90_days"].append(cert.subject.rfc4514_string())
+            return result
+    except Exception:
+        pass
+
+    # --- If nothing matched ---
+    return result
+
+
+# Example usage
+if __name__ == "__main__":
+    random_data = b"hello this is not a cert"
+    print(detect_format_and_check_expiry(random_data))
