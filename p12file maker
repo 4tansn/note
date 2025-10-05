@@ -1,0 +1,11 @@
+import base64
+
+def save_p12_from_base64(base64_string, filename="output.p12"):
+    data = base64.b64decode(base64_string)
+    with open(filename, "wb") as f:
+        f.write(data)
+    print(f"Saved PKCS12 file as {filename}")
+
+# Example usage:
+base64_pfx = "MII..."  # your Base64 PKCS12 string from vault
+save_p12_from_base64(base64_pfx, "vault_export.p12")
