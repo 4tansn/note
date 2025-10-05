@@ -1,0 +1,26 @@
+import base64
+from asn1crypto import pem, cms, x509, pkcs12
+
+def extract_certs_pkcs12(base64_string):
+    data = base64.b64decode(base64_string)
+    pfx = pkcs12.Pfx.load(data)
+    auth_safe = pfx['auth_safe']
+    certs = []
+
+    for content_info in auth_safe['content']:
+        if content_info['content_type'].native == 'data':
+            safe_contents = pkcs12.SafeContents.load(content_info['content'].parsed)
+            for bag in safe_contents:
+                if bag['bag_id'].native == 'certBag':
+                    cert = x509.Certificate.load(bag['bag_value'].parsed.dump())
+                    certs.append({
+                        "subject": cert.subject.native,
+                        "issuer": cert.issuer.native,
+                        "not_valid_before": cert['tbs_certificate']['validity']['not_before'].native,
+                        "not_valid_after": cert['tbs_certificate']['validity']['not_after'].native
+                    })
+    return certs
+
+# Example
+base64_pfx = "MII..."  # your base64 string
+print(extract_certs_pkcs12(base64_pfx))
