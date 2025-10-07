@@ -1,11 +1,150 @@
-import base64
+h1. Certificate Expiry Monitoring Tool
 
-def save_p12_from_base64(base64_string, filename="output.p12"):
-    data = base64.b64decode(base64_string)
-    with open(filename, "wb") as f:
-        f.write(data)
-    print(f"Saved PKCS12 file as {filename}")
+h2. Overview
+The *Certificate Expiry Monitoring Tool* is a lightweight Python utility that automatically detects and reports SSL/TLS certificate entries that are nearing expiry (within 90 days) inside Java KeyStores (JKS) or PKCS12 (.p12/.pfx) files.
 
-# Example usage:
-base64_pfx = "MII..."  # your Base64 PKCS12 string from vault
-save_p12_from_base64(base64_pfx, "vault_export.p12")
+It is designed for teams managing multiple keystores in CI/CD pipelines, vaults, or configuration repositories — where certificates may rotate frequently and manual tracking becomes error-prone.
+
+---
+
+h2. Objectives
+
+* Detect expiring certificates proactively (≤ 90 days left).
+* Support both *JKS* and *PKCS12* formats.
+* Handle base64-encoded keystores stored in configuration management systems.
+* Generate timestamped reports for auditing.
+* Capture and log any unreadable or corrupt keystores separately.
+
+---
+
+h2. High-Level Architecture
+
+|| Component || Description ||
+| *Input Decoder* | Decodes base64-encoded keystore strings into raw binary. |
+| *Format Detector* | Identifies whether the decoded data represents a JKS or PKCS12 keystore by checking the file signature (magic bytes). |
+| *JKS Parser* | Extracts public certificate chains from JKS keystores using the `python-jks` library (in non-password mode). |
+| *PKCS12 Parser* | Uses the `cryptography` library to read certificates from PKCS12 containers without requiring a password. |
+| *Expiry Evaluator* | Parses each X.509 certificate, computes remaining days before expiry, and flags those below 90 days. |
+| *Report Generator* | Writes all expiring certificates with details (alias, subject, expiry, days left) to a timestamped file. |
+| *Error Handler* | Captures parsing or format errors and logs failed keystores to a separate text file for review. |
+
+---
+
+h2. Data Flow Diagram
+
+{code}
+┌────────────────────┐
+│ Base64 JKS/P12     │
+│ strings (input)    │
+└─────────┬──────────┘
+│ Decode
+▼
+┌────────────────────┐
+│ Format Detector    │
+│ (Magic bytes check)│
+└─────────┬──────────┘
+JKS   │   PKCS12
+▼     │     ▼
+┌──────────┘     └───────────┐
+│  JKS Parser                │
+│  (python-jks)              │
+└──────────┬─────────────────┘
+│
+▼
+┌────────────────────┐
+│ Expiry Evaluator   │
+│ (X.509 parsing)    │
+└─────────┬──────────┘
+│
+▼
+┌────────────────────┐
+│ Report Generator   │
+│ - expiring_certs_<timestamp>.txt │
+│ - failed_keystores.txt          │
+└────────────────────┘
+{code}
+
+---
+
+h2. Key Libraries and Functions
+
+| Library        | Purpose                                                  |
+| -------------- | -------------------------------------------------------- |
+| `base64`       | Decode base64-encoded keystore content                   |
+| `jks`          | Load Java Keystore (JKS) entries without full decryption |
+| `cryptography` | Parse PKCS12 files and X.509 certificate metadata        |
+| `datetime`     | Compute remaining days until expiry                      |
+| `struct`       | (Optional) Inspect keystore magic number bytes           |
+
+---
+
+h2. Logic Summary
+
+# *Decode base64 input* into bytes.
+
+# *Detect format*:
+
+* Bytes start with `FEEDFEED` → JKS
+* Bytes start with `30 82` → PKCS12
+
+# *Parse certificates*:
+
+* For JKS, extract `cert.cert` (DER) and load via `x509.load_der_x509_certificate`.
+* For PKCS12, call `pkcs12.load_key_and_certificates`.
+
+# *Check expiry*:
+
+* Compare `cert.not_valid_after` with `datetime.utcnow()`.
+* If ≤ 90 days, log as warning.
+
+# *Output results*:
+
+* `expiring_certs_<timestamp>.txt` → list of expiring certs.
+* `failed_keystores.txt` → list of keystores that could not be parsed.
+
+---
+
+h2. Example Report Output
+
+{code}
+[WARNING] Keystore: amex_prod_pisp, Alias: api_gateway_cert
+Subject   : CN=api-gateway.amex.com, OU=TechOps, O=American Express
+Expiry    : 2025-11-30 15:00:00
+Days Left : 45
+
+[WARNING] Keystore: amex_stage_pisp, Alias: partner_cert
+Subject   : CN=partner.api.amex.com, O=American Express
+Expiry    : 2025-10-20 13:42:00
+Days Left : 13
+{code}
+
+---
+
+h2. Error Handling
+
+* If a keystore fails to parse (corrupt, wrong format, or unsupported password), it is logged in `failed_keystores.txt`.
+* Each failure includes the keystore identifier and error context.
+
+---
+
+h2. Future Enhancements
+
+* Integrate with Slack or email alerts for upcoming expiries.
+* Support encrypted keystores with password input.
+* Add CSV/JSON report formats.
+* Integrate with Jenkins or GitHub Actions for automated monitoring.
+
+---
+
+h2. References
+
+* [JKS File Structure – Oracle Docs](https://docs.oracle.com/en/java/javase/11/security/java-keystore-implementation.html)
+* [cryptography.io – PKCS12 Support](https://cryptography.io/en/latest/hazmat/primitives/asymmetric/serialization/#pkcs12)
+* [python-jks GitHub](https://github.com/kurtbrose/pyjks)
+
+---
+
+h2. Maintainers
+*Author:* Sourav Sahu
+*Team:* Platform Engineering – Observability & Security
+*Contact:* [sourav.sahu@americanexpress.com](mailto:sourav.sahu@americanexpress.com)
